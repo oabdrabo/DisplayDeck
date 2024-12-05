@@ -513,6 +513,15 @@ static const size_t kCommonHiDPICount =
             [NSString stringWithFormat:@"%zu_%zu", mode.pixelWidth, mode.pixelHeight]];
     }
 
+    // Pre-index candidate pixel sizes so we can check, for each common preset,
+    // whether the panel has an exact 2×target match (→ pixel-perfect) or will
+    // require mirror scaling (→ softness). Lets us label each row honestly.
+    NSMutableSet<NSString *> *candidatePixelKeys = [NSMutableSet set];
+    for (DDDisplayMode *mode in candidates) {
+        [candidatePixelKeys addObject:
+            [NSString stringWithFormat:@"%zu_%zu", mode.pixelWidth, mode.pixelHeight]];
+    }
+
     for (size_t i = 0; i < kCommonHiDPICount; i++) {
         size_t pw = kCommonHiDPIResolutions[i].w;
         size_t ph = kCommonHiDPIResolutions[i].h;
@@ -528,13 +537,17 @@ static const size_t kCommonHiDPICount =
         synthetic.isHiDPI       = NO;
         synthetic.modeRef       = NULL;
 
+        NSString *doubleKey = [NSString stringWithFormat:@"%zu_%zu", pw * 2, ph * 2];
+        BOOL pixelPerfect = [candidatePixelKeys containsObject:doubleKey];
+
         NSString *pixelStr = [[NSString stringWithFormat:@"%zu \u00D7 %zu", pw, ph]
                               stringByPaddingToLength:kPixelColWidth
                                           withString:@" " startingAtIndex:0];
         NSString *gap = [@"" stringByPaddingToLength:kHzColWidth
                                            withString:@" " startingAtIndex:0];
-        NSString *line = [NSString stringWithFormat:@"%@%@\u2295 custom",
-                          pixelStr, gap];
+        NSString *line = [NSString stringWithFormat:@"%@%@\u2295 custom%@",
+                          pixelStr, gap,
+                          pixelPerfect ? @"" : @" (scaled)"];
 
         BOOL isCurrent = (currentlyForced &&
                           currentlyForced.pixelWidth  == pw &&

@@ -653,32 +653,57 @@ static void displayReconfigCallback(CGDirectDisplayID display __unused,
         CGDisplayModeRelease(curMode);
     }
 
-    // Resolve the panel mode we'll switch to (if any). For a targetMode with
-    // a real modeRef, that's the mode itself. For a synthetic (custom) target
-    // with nil modeRef, search the panel's advertised modes for one at exactly
-    // 2× the target's pixel dimensions — switching the panel there makes the
-    // mirror a 1:1 integer copy of the virtual (no downscale blur). Prefer
-    // Standard over HiDPI as the switch target (cleaner mirror source state).
-    // If no matching mode exists, leave the panel on its current mode and
-    // accept whatever scaling macOS does; still non-integer but best-available.
+    // Resolve the panel mode we'll switch to. For a targetMode with a real
+    // modeRef, it's the mode itself. For a synthetic (custom) target with nil
+    // modeRef, find the best-fit panel mode:
+    //   1. Exact 2×target pixels → 1:1 mirror, pixel-perfect (Standard preferred).
+    //   2. Failing that, the panel mode whose dimensions minimize the max-axis
+    //      scale deviation from virtual (2×target) — so the mirror's downscale
+    //      is as close to 1.0 as this panel can offer. This matters on the
+    //      MacBook built-in where Apple advertises a curated set of scaled
+    //      modes but rarely an exact 2×target for arbitrary logical sizes.
     NSArray<DDDisplayMode *> *panelModes = [self modesForDisplay:displayID];
     CGDisplayModeRef switchMode = targetMode ? targetMode.modeRef : NULL;
     if (targetMode && !switchMode) {
         size_t wantPW = pixelWidth * 2;
         size_t wantPH = pixelHeight * 2;
+
+        // Pass 1: exact 2× match (Standard preferred).
         for (DDDisplayMode *m in panelModes) {
             if (m.pixelWidth == wantPW && m.pixelHeight == wantPH && !m.isHiDPI) {
-                switchMode = m.modeRef;
-                break;
+                switchMode = m.modeRef; break;
             }
         }
         if (!switchMode) {
             for (DDDisplayMode *m in panelModes) {
                 if (m.pixelWidth == wantPW && m.pixelHeight == wantPH) {
-                    switchMode = m.modeRef;
-                    break;
+                    switchMode = m.modeRef; break;
                 }
             }
+        }
+
+        // Pass 2: no exact match — closest-by-scale-deviation.
+        if (!switchMode) {
+            DDDisplayMode *best = nil;
+            double bestScore = INFINITY;
+            // Prefer Standard variants as mirror sources.
+            for (DDDisplayMode *m in panelModes) {
+                if (m.isHiDPI) continue;
+                double rw = (double)m.pixelWidth  / (double)wantPW;
+                double rh = (double)m.pixelHeight / (double)wantPH;
+                double score = MAX(fabs(1.0 - rw), fabs(1.0 - rh));
+                if (score < bestScore) { bestScore = score; best = m; }
+            }
+            // Fall back to HiDPI variants if no Standard exists.
+            if (!best) {
+                for (DDDisplayMode *m in panelModes) {
+                    double rw = (double)m.pixelWidth  / (double)wantPW;
+                    double rh = (double)m.pixelHeight / (double)wantPH;
+                    double score = MAX(fabs(1.0 - rw), fabs(1.0 - rh));
+                    if (score < bestScore) { bestScore = score; best = m; }
+                }
+            }
+            if (best) switchMode = best.modeRef;
         }
     }
 

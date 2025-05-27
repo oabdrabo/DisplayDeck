@@ -74,7 +74,17 @@ static const size_t kCommonHiDPICount =
     [self.displayManager startMonitoringWithChangeHandler:^{
         __strong __typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
+        // Order matters:
+        //   1. prune first  — clears force state if the target display
+        //      disappeared, so realign's early-return-on-no-force fires
+        //      instead of reconfiguring a ghost ID.
+        //   2. realign next — re-asserts mirror/mode/topology for any
+        //      force that survived the reconfig.
+        //   3. invalidate brightness cache — IOAVService handles may have
+        //      become stale on display change.
+        //   4. rebuild menu last — so it reflects the reconciled state.
         [strongSelf.displayManager pruneStaleVirtualDisplays];
+        [strongSelf.displayManager realignForcedDisplay];
         [[Brightness shared] invalidateServiceCache];
         [strongSelf rebuildMenu];
         [strongSelf performAutoDisableIfNeeded];

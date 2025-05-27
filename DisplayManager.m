@@ -137,6 +137,12 @@ typedef CGError (^DisplayConfigBlock)(CGDisplayConfigRef config);
 // restore the whole topology on stop — not just the target's mode. Without
 // this, other displays stay where the force stacked them (right of virtual).
 @property (nonatomic, strong) NSDictionary<NSNumber *, NSValue *> *preForceTopology;
+// Re-entry guard for -realignForcedDisplay. The realign calls performDisplayConfig
+// which itself emits reconfig callbacks → another coalesced realign. Each
+// invariant check is idempotent (only fires when drifted), so it converges,
+// but a pathological run where macOS keeps overriding our pin could oscillate.
+// This flag is a hard cap: only one realign runs at a time.
+@property (nonatomic) BOOL realignInFlight;
 - (void)scheduleChangeNotification;
 - (void)handleSharedVirtualDisplayTerminated;
 - (BOOL)displayHasNativeHiDPIModes:(CGDirectDisplayID)displayID;
@@ -626,6 +632,14 @@ static void ddPrimariesForColorSpace(CGColorSpaceRef cs,
 
     CGVirtualDisplay *vd = self.sharedVirtualDisplay;
     if (vd) {
+        // applySettings updates the VD's advertised modes (so logical size
+        // and refresh rate re-flow), but NOT its descriptor — color primaries
+        // and white point are pinned to what the first force observed on its
+        // source panel. Forcing across panels with different gamuts (e.g. a
+        // P3 built-in then an sRGB external) keeps the first panel's
+        // primaries on the virtual. This is an OS-level constraint:
+        // CGVirtualDisplay's descriptor is immutable, and recreation while
+        // any mirror has ever been active reliably fails on macOS 26.
         if (![vd applySettings:settings]) {
             if (error) *error = ddMakeError(DDErrorVirtualApplyFailed,
                 @"Failed to reapply HiDPI settings to the shared virtual display.");
@@ -1108,6 +1122,101 @@ static void ddPrimariesForColorSpace(CGColorSpaceRef cs,
         self.sharedVirtualDisplay = nil;
         NSLog(@"DisplayDisabler: Released shared virtual display.");
     }
+}
+
+// Re-establish the Force HiDPI invariants after a display topology change.
+// When an external connects/disconnects or a mode changes elsewhere, macOS
+// can (a) break the physical↔virtual mirror, (b) auto-switch the virtual
+// to a mode matching whatever panel is now present, (c) shuffle display
+// origins. Any of those leaves the cursor drifting or the force looking
+// "half-applied". We check each invariant and fix only what drifted — no
+// blind reconfiguration, so this is safe to call on every reconfig event.
+- (void)realignForcedDisplay {
+    if (self.forcedPhysical == kCGNullDirectDisplay) return;
+    if (self.realignInFlight) return;
+    CGDirectDisplayID physical = self.forcedPhysical;
+    if (!CGDisplayIsActive(physical)) return;  // pruneStaleVirtualDisplays handles
+
+    CGVirtualDisplay *vd = self.sharedVirtualDisplay;
+    if (!vd) return;
+    CGDirectDisplayID virtualID = vd.displayID;
+    self.realignInFlight = YES;
+
+    // 1. Mirror integrity.
+    BOOL mirrorOK = (CGDisplayMirrorsDisplay(physical) == virtualID);
+
+    // 2. Virtual-mode integrity: must still be our advertised logical size.
+    DDDisplayMode *target = self.forcedTarget;
+    BOOL modeOK = YES;
+    if (target) {
+        CGDisplayModeRef curV = CGDisplayCopyDisplayMode(virtualID);
+        if (curV) {
+            modeOK = (CGDisplayModeGetWidth(curV)  == target.logicalWidth &&
+                      CGDisplayModeGetHeight(curV) == target.logicalHeight);
+            CGDisplayModeRelease(curV);
+        } else {
+            modeOK = NO;
+        }
+    }
+
+    // 3. Topology integrity: virtual origin matches the pre-force snapshot,
+    // other displays stacked right of the virtual.
+    NSValue *physOriginV = self.preForceTopology[@(physical)];
+    CGPoint physOrigin = physOriginV ? [physOriginV pointValue] : CGPointZero;
+    CGRect vb = CGDisplayBounds(virtualID);
+    BOOL topoOK = (vb.origin.x == physOrigin.x && vb.origin.y == physOrigin.y);
+
+    if (mirrorOK && modeOK && topoOK) {
+        self.realignInFlight = NO;
+        return;
+    }
+
+    NSLog(@"DisplayDisabler: Realigning forced display after reconfig "
+          @"(mirror=%d mode=%d topology=%d).", mirrorOK, modeOK, topoOK);
+
+    if (!mirrorOK) {
+        [self performDisplayConfig:^CGError(CGDisplayConfigRef config) {
+            return CGConfigureDisplayMirrorOfDisplay(config, physical, virtualID);
+        } error:NULL];
+    }
+
+    if (!modeOK && target) {
+        CGDisplayModeRef vmode = [self copyVirtualDisplayModeForVirtual:virtualID
+                                                           logicalWidth:target.logicalWidth
+                                                          logicalHeight:target.logicalHeight];
+        if (vmode) {
+            [self performDisplayConfig:^CGError(CGDisplayConfigRef config) {
+                return CGConfigureDisplayWithDisplayMode(config, virtualID, vmode, NULL);
+            } error:NULL];
+            CGDisplayModeRelease(vmode);
+        }
+    }
+
+    if (!topoOK) {
+        CGRect postVB = CGDisplayBounds(virtualID);
+        NSArray<NSNumber *> *online = ddQueryDisplayList(CGGetOnlineDisplayList);
+        [self performDisplayConfig:^CGError(CGDisplayConfigRef config) {
+            CGError e = CGConfigureDisplayOrigin(config, virtualID,
+                                                 (int32_t)physOrigin.x,
+                                                 (int32_t)physOrigin.y);
+            if (e != kCGErrorSuccess) return e;
+            int32_t x = (int32_t)(physOrigin.x + postVB.size.width);
+            int32_t y = (int32_t)physOrigin.y;
+            for (NSNumber *didNum in online) {
+                CGDirectDisplayID other = didNum.unsignedIntValue;
+                if (other == physical) continue;
+                if (other == virtualID) continue;
+                if ([self isVirtualDisplayID:other]) continue;
+                if (!CGDisplayIsActive(other)) continue;
+                e = CGConfigureDisplayOrigin(config, other, x, y);
+                if (e != kCGErrorSuccess) return e;
+                x += (int32_t)CGDisplayBounds(other).size.width;
+            }
+            return kCGErrorSuccess;
+        } error:NULL];
+    }
+
+    self.realignInFlight = NO;
 }
 
 - (void)pruneStaleVirtualDisplays {

@@ -104,6 +104,12 @@ typedef void (^DDForceHiDPICompletion)(BOOL success, NSError * _Nullable error);
 - (nullable DDDisplayMode *)forcedTargetForDisplay:(CGDirectDisplayID)displayID;
 - (void)cleanUpAllVirtualDisplays;
 - (void)pruneStaleVirtualDisplays;
+// Re-establish the Force HiDPI invariants after a display topology change.
+// macOS may drop the mirror, auto-switch the virtual's mode, or shuffle
+// origins when externals connect/disconnect — this call re-asserts the
+// mirror, re-pins the virtual onto our advertised mode, and re-lays out
+// the topology. No-op if nothing is forced or nothing drifted.
+- (void)realignForcedDisplay;
 
 // Monitoring
 - (void)startMonitoringWithChangeHandler:(DisplayChangeBlock)handler;

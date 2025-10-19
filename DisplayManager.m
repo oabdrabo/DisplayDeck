@@ -7,6 +7,7 @@
 #import <AppKit/AppKit.h>
 #import <IOKit/IOKitLib.h>
 #import <IOKit/graphics/IOGraphicsLib.h>
+#import <objc/runtime.h>
 #include <math.h>
 #include <os/log.h>
 
@@ -45,38 +46,62 @@ static const double kDDHiDPIScales[] = {0.5, 0.625, 0.75, 0.875, 1.0, 1.125, 1.2
 static const size_t kDDHiDPIScaleCount = sizeof(kDDHiDPIScales) / sizeof(*kDDHiDPIScales);
 
 
-// ── CGVirtualDisplay private API (macOS 14+, resolved at runtime) ───────────
+// ── SLVirtualDisplay private API (SkyLight, macOS 14+, runtime-resolved) ────
+//
+// Modern replacement for CGVirtualDisplay. The decisive practical difference
+// for Force HiDPI on a notched MacBook panel: when the SLVirtualDisplay's
+// configuration is cloned from the source panel's CoreDisplay info, macOS
+// auto-selects the panel's own HiDPI variant as the mirror destination's
+// runtime mode (e.g. pixel 5120×3328 @ logical 2560×1664 — the same scaled
+// HiDPI mode System Settings would set natively). The CGVirtualDisplay path
+// instead lands on a Standard-pixel mirror mode (pixel 2560×1664 @ logical
+// 2560×1664), which carries different notch-handling behavior in WindowServer's
+// compositor. Empirical reverse engineering (lldb disassembly of
+// MBDisplays::GetDisplayNotchBounds and SLSGetDisplayAppleThemeLegacyRect)
+// showed that the destination-driven safe-aperture shift cannot be overridden
+// via any exposed SLS/CG/IOKit setter — switching to SL's HiDPI-mode mirror
+// path is the highest-leverage workaround available without resorting to the
+// reboot-and-admin Crisp HiDPI plist injection.
+//
+// Class layout established by introspecting class_copyMethodList /
+// class_copyIvarList against the live SkyLight image. SLVirtualDisplayMode's
+// pixel/points size structs are {uint32_t width; uint32_t height} (encoding
+// "{?=II}") — declared anonymously here to match the runtime ABI.
 
-@interface CGVirtualDisplayMode : NSObject
-- (instancetype)initWithWidth:(NSUInteger)width height:(NSUInteger)height refreshRate:(double)refreshRate;
+typedef struct { uint32_t width; uint32_t height; } SLVirtualDisplaySize;
+
+@interface SLVirtualDisplayMode : NSObject
+- (instancetype)initWithSizeInPixels:(SLVirtualDisplaySize)pixels
+                        sizeInPoints:(SLVirtualDisplaySize)points
+                         refreshRate:(float)refreshRate
+                               error:(NSError **)error;
 @end
 
-@interface CGVirtualDisplayDescriptor : NSObject
-@property (nonatomic, copy) NSString *name;
-@property (nonatomic) NSUInteger maxPixelsWide;
-@property (nonatomic) NSUInteger maxPixelsHigh;
-@property (nonatomic) CGSize sizeInMillimeters;
-@property (nonatomic, strong) dispatch_queue_t queue;
-@property (nonatomic, copy) void (^terminationHandler)(id display, id error);
-@property (nonatomic) NSUInteger vendorID;
-@property (nonatomic) NSUInteger productID;
-@property (nonatomic) NSUInteger serialNum;
-@property (nonatomic) CGPoint redPrimary;
-@property (nonatomic) CGPoint greenPrimary;
-@property (nonatomic) CGPoint bluePrimary;
-@property (nonatomic) CGPoint whitePoint;
+@interface SLVirtualDisplayConfiguration : NSObject
++ (instancetype)configurationWithDisplayInfo:(NSDictionary *)displayInfo;
+@property (nonatomic) NSUInteger options;
 @end
 
-@interface CGVirtualDisplaySettings : NSObject
-@property (nonatomic) unsigned int hiDPI;
-@property (nonatomic, copy) NSArray *modes;
+@interface SLVirtualDisplaySettings : NSObject
+- (instancetype)initWithNativeMode:(SLVirtualDisplayMode *)nativeMode
+                     preferredMode:(SLVirtualDisplayMode *)preferredMode
+                     optionalModes:(NSArray<SLVirtualDisplayMode *> *)optionalModes
+                         rotations:(NSUInteger)rotations
+                             error:(NSError **)error;
 @end
 
-@interface CGVirtualDisplay : NSObject
-- (instancetype)initWithDescriptor:(CGVirtualDisplayDescriptor *)descriptor;
-- (BOOL)applySettings:(CGVirtualDisplaySettings *)settings;
+@interface SLVirtualDisplay : NSObject
+- (instancetype)initWithConfiguration:(SLVirtualDisplayConfiguration *)config
+                                error:(NSError **)error;
+- (BOOL)applySettings:(SLVirtualDisplaySettings *)settings error:(NSError **)error;
+- (void)destroy;
 @property (nonatomic, readonly) CGDirectDisplayID displayID;
 @end
+
+// CoreDisplay private — used to clone the source panel's identity / chromaticities
+// into the SLVirtualDisplay configuration. Already linked via -framework CoreDisplay.
+extern CFDictionaryRef CoreDisplay_DisplayCreateInfoDictionary(CGDirectDisplayID display)
+    CF_RETURNS_RETAINED;
 
 // ── Error helpers ───────────────────────────────────────────────────────────
 
@@ -249,7 +274,7 @@ static void displayReconfigCallback(CGDirectDisplayID display __unused,
 // ── Virtual display bookkeeping ─────────────────────────────────────────────
 
 - (BOOL)isVirtualDisplayID:(CGDirectDisplayID)displayID {
-    CGVirtualDisplay *vd = self.sharedVirtualDisplay;
+    SLVirtualDisplay *vd = self.sharedVirtualDisplay;
     return vd && vd.displayID == displayID;
 }
 
@@ -524,7 +549,22 @@ static void displayReconfigCallback(CGDirectDisplayID display __unused,
 - (CGDisplayModeRef)copyVirtualDisplayModeForVirtual:(CGDirectDisplayID)virtualID
                                          logicalWidth:(size_t)lw
                                         logicalHeight:(size_t)lh CF_RETURNS_RETAINED {
-    CFArrayRef modes = CGDisplayCopyAllDisplayModes(virtualID, NULL);
+    // kCGDisplayShowDuplicateLowResolutionModes is REQUIRED here. Without it,
+    // CGDisplayCopyAllDisplayModes hides the HiDPI variant at any pixel size
+    // that also has a Standard variant (Apple's "duplicate low-res" filter
+    // keeps Standard, drops HiDPI). Our SLVirtualDisplay advertises a HiDPI
+    // mode with logical=2560×1664, pixel=5120×3328 — and a Standard sibling
+    // with logical=pixel=2560×1664. Without the flag we'd find only Standard,
+    // pin the VD to it, and the mirror compositor would then select the
+    // panel's Standard mode (logical=pixel=2560×1664) instead of the panel's
+    // own HiDPI variant (pixel=5120×3328). The Standard panel mode produces
+    // the visible left/right pillarbox bars — picking the HiDPI variant
+    // matches the panel's native scaled rendering and fills the entire panel.
+    NSDictionary *opts = @{
+        (__bridge NSString *)kCGDisplayShowDuplicateLowResolutionModes: @YES
+    };
+    CFArrayRef modes = CGDisplayCopyAllDisplayModes(virtualID,
+        (__bridge CFDictionaryRef)opts);
     if (!modes) return NULL;
 
     CGDisplayModeRef hidpi = NULL, standard = NULL;
@@ -589,132 +629,129 @@ static void displayReconfigCallback(CGDirectDisplayID display __unused,
     return [self isDisplayIDOnline:vdID];
 }
 
-// Pick color primaries for the virtual display descriptor from the source
-// panel's named color space. Display P3 is the default (modern Apple) and is
-// overridden to sRGB/Rec.709 only when the source's CGColorSpaceCopyName
-// returns one of the sRGB-family names. CGVirtualDisplay's descriptor only
-// accepts primaries + white point, so calibrated-ICC profiles cannot be
-// matched 1:1 — those silently use the P3 default, which is correct for
-// every modern Apple panel and benign on others.
-static void ddPrimariesForColorSpace(CGColorSpaceRef cs,
-                                      CGPoint *red, CGPoint *green,
-                                      CGPoint *blue, CGPoint *white) {
-    // Display P3 (default / modern Apple).
-    *red   = CGPointMake(0.6800, 0.3200);
-    *green = CGPointMake(0.2650, 0.6900);
-    *blue  = CGPointMake(0.1500, 0.0600);
-    *white = CGPointMake(0.3127, 0.3290);
-    if (!cs) return;
-    CFStringRef name = CGColorSpaceCopyName(cs);
-    if (!name) return;
-    if (CFEqual(name, kCGColorSpaceSRGB) ||
-        CFEqual(name, kCGColorSpaceLinearSRGB) ||
-        CFEqual(name, kCGColorSpaceExtendedSRGB) ||
-        CFEqual(name, kCGColorSpaceGenericRGB)) {
-        // sRGB / Rec.709 primaries, D65.
-        *red   = CGPointMake(0.6400, 0.3300);
-        *green = CGPointMake(0.3000, 0.6000);
-        *blue  = CGPointMake(0.1500, 0.0600);
-        *white = CGPointMake(0.3127, 0.3290);
-    }
-    CFRelease(name);
-}
-
-// Ensure the singleton shared virtual display exists, sized large enough to
-// cover any plausible target (10240×5760 — enough for a 5K panel at 2×), and
-// re-apply settings advertising a single (lw × lh) logical mode with HiDPI
-// so the virtual has a 2× pixel backing at that logical size. The refresh
-// rate matches the source panel's current refresh so ProMotion (120Hz) and
-// high-refresh externals aren't pegged to 60Hz.
-- (CGVirtualDisplay *)ensureSharedVirtualDisplayWithLogicalWidth:(size_t)lw
+// Ensure the singleton shared SLVirtualDisplay exists and apply settings
+// advertising a single mode with the requested logical size at 2× pixel
+// backing. First-time creation clones the source panel's CoreDisplay info
+// dictionary into the SLVirtualDisplayConfiguration — the cloned identity
+// (vendor/product/serial/chromaticities/dimensions) is what causes macOS to
+// auto-select the panel's own HiDPI variant as the runtime mirror mode (see
+// SLVirtualDisplay header block above for the reverse-engineering trace).
+//
+// Subsequent forces reuse the same SLVirtualDisplay; -applySettings:error:
+// re-flows the advertised mode without recreating the descriptor (which can't
+// be recreated cleanly once the VD has been mirrored on macOS 14–26).
+- (SLVirtualDisplay *)ensureSharedVirtualDisplayWithLogicalWidth:(size_t)lw
                                                           height:(size_t)lh
                                                      refreshRate:(double)refreshRate
                                                    sourceDisplay:(CGDirectDisplayID)sourceID
                                                            error:(NSError **)error {
-    Class settingsClass = NSClassFromString(@"CGVirtualDisplaySettings");
-    Class modeClass     = NSClassFromString(@"CGVirtualDisplayMode");
+    Class ModeC = NSClassFromString(@"SLVirtualDisplayMode");
+    Class SetC  = NSClassFromString(@"SLVirtualDisplaySettings");
+    Class CfgC  = NSClassFromString(@"SLVirtualDisplayConfiguration");
+    Class VDC   = NSClassFromString(@"SLVirtualDisplay");
+    if (!ModeC || !SetC || !CfgC || !VDC) {
+        if (error) *error = ddMakeError(DDErrorRequiresMacOS14,
+            @"SLVirtualDisplay private API not available on this macOS.");
+        return nil;
+    }
 
-    // CGVirtualDisplayMode.width/height are LOGICAL (points). hiDPI=1 then
-    // gives a 2× pixel backing, so the mode we advertise has logical=(lw,lh)
-    // and pixel=(lw*2,lh*2) — normal HiDPI with cursor canvas matching lw×lh.
-    double rate = (refreshRate > 0) ? refreshRate : 60.0;
-    CGVirtualDisplaySettings *settings = [[settingsClass alloc] init];
-    settings.hiDPI = 1;
-    settings.modes = @[
-        [[modeClass alloc] initWithWidth:lw height:lh refreshRate:rate],
-    ];
+    float rate = (refreshRate > 0) ? (float)refreshRate : 60.0f;
+    SLVirtualDisplaySize px  = {(uint32_t)(lw * 2), (uint32_t)(lh * 2)};
+    SLVirtualDisplaySize pts = {(uint32_t)lw,       (uint32_t)lh};
 
-    CGVirtualDisplay *vd = self.sharedVirtualDisplay;
+    NSError *modeErr = nil;
+    SLVirtualDisplayMode *mode = [[ModeC alloc] initWithSizeInPixels:px
+                                                        sizeInPoints:pts
+                                                         refreshRate:rate
+                                                               error:&modeErr];
+    if (!mode) {
+        if (error) *error = ddMakeError(DDErrorVirtualApplyFailed,
+            @"SLVirtualDisplayMode init failed: %@", modeErr.localizedDescription);
+        return nil;
+    }
+
+    NSError *setErr = nil;
+    SLVirtualDisplaySettings *settings = [[SetC alloc]
+        initWithNativeMode:mode
+             preferredMode:mode
+             optionalModes:@[mode]
+                 rotations:0
+                     error:&setErr];
+    if (!settings) {
+        if (error) *error = ddMakeError(DDErrorVirtualApplyFailed,
+            @"SLVirtualDisplaySettings init failed: %@", setErr.localizedDescription);
+        return nil;
+    }
+
+    SLVirtualDisplay *vd = self.sharedVirtualDisplay;
     if (vd) {
-        // applySettings updates the VD's advertised modes (so logical size
-        // and refresh rate re-flow), but NOT its descriptor — color primaries
-        // and white point are pinned to what the first force observed on its
-        // source panel. Forcing across panels with different gamuts (e.g. a
-        // P3 built-in then an sRGB external) keeps the first panel's
-        // primaries on the virtual. This is an OS-level constraint:
-        // CGVirtualDisplay's descriptor is immutable, and recreation while
-        // any mirror has ever been active reliably fails on macOS 26.
-        if (![vd applySettings:settings]) {
+        NSError *applyErr = nil;
+        if (![vd applySettings:settings error:&applyErr]) {
             if (error) *error = ddMakeError(DDErrorVirtualApplyFailed,
-                @"Failed to reapply HiDPI settings to the shared virtual display.");
+                @"applySettings: failed: %@", applyErr.localizedDescription);
             return nil;
         }
         return vd;
     }
 
-    // First-time creation. Generous max to support any subsequent target
-    // without recreating the VD (which would fail — see class comment).
-    enum { kSharedMaxPixelsWide = 10240, kSharedMaxPixelsHigh = 5760 };
-
-    Class vdClass   = NSClassFromString(@"CGVirtualDisplay");
-    Class descClass = NSClassFromString(@"CGVirtualDisplayDescriptor");
-
-    CGVirtualDisplayDescriptor *desc = [[descClass alloc] init];
-    desc.name              = @"DD-HiDPI";
-    desc.maxPixelsWide     = kSharedMaxPixelsWide;
-    desc.maxPixelsHigh     = kSharedMaxPixelsHigh;
-    // Size is essentially arbitrary — the compositor uses it for DPI math but
-    // the VD is never the true "output" (physical mirrors it). ~27" neutral.
-    desc.sizeInMillimeters = CGSizeMake(600, 340);
-    desc.queue             = dispatch_get_main_queue();
-    desc.vendorID          = 0xDD;
-    desc.productID         = 0x01;
-    desc.serialNum         = 1;
-    // Match the source panel's color primaries so apps render into the
-    // right gamut. For Apple Silicon built-ins and modern externals this
-    // is P3; for older sRGB panels it's sRGB. Calibrated ICCs can't be
-    // matched — the descriptor only takes primaries + white point.
-    CGPoint redPri, greenPri, bluePri, whitePt;
-    CGColorSpaceRef sourceCS = (sourceID != kCGNullDirectDisplay)
-                                ? CGDisplayCopyColorSpace(sourceID) : NULL;
-    ddPrimariesForColorSpace(sourceCS, &redPri, &greenPri, &bluePri, &whitePt);
-    if (sourceCS) CFRelease(sourceCS);
-    desc.redPrimary   = redPri;
-    desc.greenPrimary = greenPri;
-    desc.bluePrimary  = bluePri;
-    desc.whitePoint   = whitePt;
-
-    __weak __typeof(self) weakSelf = self;
-    desc.terminationHandler = ^(id __unused display, id __unused err) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [weakSelf handleSharedVirtualDisplayTerminated];
-        });
-    };
-
-    vd = [[vdClass alloc] initWithDescriptor:desc];
-    if (!vd) {
+    // First-time creation. Clone the source panel's identity so SL's mirror
+    // path lands the panel on its native HiDPI variant. CoreDisplay's info
+    // dict carries vendor/product/serial/chromaticities/dimensions/name —
+    // configurationWithDisplayInfo: consumes the same keys IODisplayCreateInfo
+    // emits.
+    if (sourceID == kCGNullDirectDisplay) {
         if (error) *error = ddMakeError(DDErrorVirtualCreateFailed,
-                                        @"Failed to create virtual display.");
+            @"Cannot create shared virtual display without a source panel.");
         return nil;
     }
-    if (![vd applySettings:settings]) {
+    CFDictionaryRef info = CoreDisplay_DisplayCreateInfoDictionary(sourceID);
+    if (!info) {
+        if (error) *error = ddMakeError(DDErrorVirtualCreateFailed,
+            @"CoreDisplay returned no info for source panel 0x%X.", sourceID);
+        return nil;
+    }
+    SLVirtualDisplayConfiguration *config =
+        [CfgC configurationWithDisplayInfo:(__bridge NSDictionary *)info];
+    CFRelease(info);
+    if (!config) {
+        if (error) *error = ddMakeError(DDErrorVirtualCreateFailed,
+            @"configurationWithDisplayInfo: returned nil for panel 0x%X.", sourceID);
+        return nil;
+    }
+
+    // The cloned configuration inherits the source panel's
+    // _maximumSizeInPixels (e.g. 6016×3384 for the M3 Air built-in), which is
+    // too small for synthetic Force HiDPI sizes that go past the panel's own
+    // mode envelope (e.g. 5880×3824 logical, 11760×7648 pixel). The
+    // SLVirtualDisplayConfiguration property is read-only, but the underlying
+    // ivar is a plain {uint32_t,uint32_t} struct — overwrite it directly to
+    // grant the VD enough envelope for any plausible target. 10240×5760 covers
+    // a 5K panel at 2× HiDPI, well past anything the option picker offers.
+    Ivar maxIvar = class_getInstanceVariable([config class], "_maximumSizeInPixels");
+    if (maxIvar) {
+        ptrdiff_t offset = ivar_getOffset(maxIvar);
+        SLVirtualDisplaySize *slot = (SLVirtualDisplaySize *)
+            ((char *)(__bridge void *)config + offset);
+        slot->width  = 10240;
+        slot->height = 5760;
+    }
+
+    NSError *initErr = nil;
+    vd = [[VDC alloc] initWithConfiguration:config error:&initErr];
+    if (!vd) {
+        if (error) *error = ddMakeError(DDErrorVirtualCreateFailed,
+            @"SLVirtualDisplay init failed: %@", initErr.localizedDescription);
+        return nil;
+    }
+    NSError *applyErr = nil;
+    if (![vd applySettings:settings error:&applyErr]) {
         if (error) *error = ddMakeError(DDErrorVirtualApplyFailed,
-                                        @"Failed to apply HiDPI settings to virtual display.");
+            @"applySettings: failed on first create: %@", applyErr.localizedDescription);
         return nil;
     }
     if (vd.displayID == kCGNullDirectDisplay) {
         if (error) *error = ddMakeError(DDErrorVirtualNoDisplayID,
-                                        @"Virtual display has no valid ID.");
+            @"SLVirtualDisplay has no valid displayID after apply.");
         return nil;
     }
 
@@ -749,7 +786,7 @@ static void ddPrimariesForColorSpace(CGColorSpaceRef cs,
 
     @try {
 
-    if (!NSClassFromString(@"CGVirtualDisplay")) {
+    if (!NSClassFromString(@"SLVirtualDisplay")) {
         deliver(NO, ddMakeError(DDErrorRequiresMacOS14,
                                 @"Force HiDPI requires macOS 14 or later."));
         return;
@@ -854,13 +891,12 @@ static void ddPrimariesForColorSpace(CGColorSpaceRef cs,
         if (score < bestScore) { bestScore = score; switchMode = m.modeRef; }
     }
 
-    // Capture the current mode for restore-on-stop — only if we're actually
-    // going to switch the panel.
+    // Capture the current panel mode for restore-on-stop. Captured before
+    // mirror so it reflects the user-visible pre-force mode, not the runtime
+    // mirror-destination mode macOS substitutes once mirroring engages.
     DDDisplayMode *preForce = nil;
-    if (switchMode) {
-        for (DDDisplayMode *m in panelModes) {
-            if (m.isCurrent) { preForce = m; break; }
-        }
+    for (DDDisplayMode *m in panelModes) {
+        if (m.isCurrent) { preForce = m; break; }
     }
 
     // Resolve the refresh rate to advertise on the virtual mode. Synthetic
@@ -878,7 +914,7 @@ static void ddPrimariesForColorSpace(CGColorSpaceRef cs,
     }
 
     NSError *vdErr = nil;
-    CGVirtualDisplay *vd = [self ensureSharedVirtualDisplayWithLogicalWidth:targetLogicalWidth
+    SLVirtualDisplay *vd = [self ensureSharedVirtualDisplayWithLogicalWidth:targetLogicalWidth
                                                                      height:targetLogicalHeight
                                                                 refreshRate:targetRate
                                                               sourceDisplay:displayID
@@ -931,35 +967,16 @@ static void ddPrimariesForColorSpace(CGColorSpaceRef cs,
     } error:&mirrorError];
     if (!mirrored) { deliver(NO, mirrorError); return; }
 
-    // THEN switch the panel to the target mode (if we resolved one).
-    // No resolution = synthetic target with no matching panel mode = panel
-    // stays on its current mode and macOS scales the mirror (accept blur).
-    if (switchMode) {
-        CGDisplayModeRef curMode = CGDisplayCopyDisplayMode(displayID);
-        BOOL alreadyOnTarget = NO;
-        if (curMode) {
-            alreadyOnTarget =
-                (CGDisplayModeGetPixelWidth(curMode)  == CGDisplayModeGetPixelWidth(switchMode) &&
-                 CGDisplayModeGetPixelHeight(curMode) == CGDisplayModeGetPixelHeight(switchMode) &&
-                 CGDisplayModeGetWidth(curMode)       == CGDisplayModeGetWidth(switchMode) &&
-                 CGDisplayModeGetHeight(curMode)      == CGDisplayModeGetHeight(switchMode));
-            CGDisplayModeRelease(curMode);
-        }
-        if (!alreadyOnTarget) {
-            NSError *switchErr = nil;
-            BOOL switched = [self performDisplayConfig:^CGError(CGDisplayConfigRef config) {
-                return CGConfigureDisplayWithDisplayMode(config, displayID,
-                                                         switchMode, NULL);
-            } error:&switchErr];
-            if (!switched) {
-                // Roll back the mirror — leaving it live while the mode is wrong
-                // strands the panel in an inconsistent state.
-                [self unmirrorDisplay:displayID];
-                deliver(NO, switchErr);
-                return;
-            }
-        }
-    }
+    // No explicit panel-mode switch. With the SLVirtualDisplay backbone (whose
+    // configuration is cloned from the source panel's CoreDisplay info), the
+    // mirror compositor auto-selects the panel's own HiDPI variant as the
+    // mirror destination's runtime mode (e.g. pixel 5120×3328 @ logical 2560×
+    // 1664 — the same scaled HiDPI mode macOS uses natively when you pick
+    // "Looks like 2560×1664" in System Settings without forcing). Pre-empting
+    // that with our own CGConfigureDisplayWithDisplayMode regressed the panel
+    // to a Standard mirror-runtime variant (pixel = logical = 2560×1664) that
+    // produced visible pillarbox bands and wasted the SLVirtualDisplay path's
+    // central advantage.
 
     // Pin the virtual onto OUR advertised (targetLogical × targetLogical HiDPI)
     // mode. After the mirror+panel-switch above, macOS may have auto-selected
@@ -1187,27 +1204,22 @@ static void ddPrimariesForColorSpace(CGColorSpaceRef cs,
     return (self.forcedPhysical == displayID) ? self.forcedTarget : nil;
 }
 
-// Restore the pre-force origin of every display we snapshotted. Best-effort:
-// a failure here is cosmetic (displays stay in the force-time positions) but
-// we log it so it's visible.
-- (void)restorePreForceTopology {
-    NSDictionary<NSNumber *, NSValue *> *topology = self.preForceTopology;
-    if (topology.count == 0) return;
-
-    // The shared virtual display isn't destroyed on stop — it's reused for
-    // the next force. After we restore the physicals to their pre-force
-    // origins, the VD is still sitting at whatever origin it held during
-    // the force (target's pre-force origin, placed there by the apply-time
-    // topology alignment). That position now collides with the physical
-    // that's coming back — macOS resolves by auto-deactivating one and the
-    // cursor "gets lost" on panels that end up at the same origin.
-    //
-    // Fix: in the SAME atomic transaction as the physical-origin restore,
-    // park the VD past the rightmost restored physical so it can't collide
-    // with anything user-visible. VD isn't mirrored anywhere now, so its
-    // logical bounds are only used for future force reuse.
-    CGVirtualDisplay *vd = self.sharedVirtualDisplay;
-    CGDirectDisplayID virtualID = vd ? vd.displayID : kCGNullDirectDisplay;
+// Compose the topology-restore + virtual-park steps into an open
+// CGDisplayConfigRef so callers can bundle them with mirror/mode operations
+// in a single atomic transaction. Returns kCGErrorSuccess if there's nothing
+// to restore (empty snapshot).
+//
+// The shared virtual display isn't destroyed on stop — it's reused for the
+// next force. After we restore the physicals to their pre-force origins, the
+// VD is still sitting at whatever origin it held during the force (target's
+// pre-force origin, placed there by the apply-time topology alignment). That
+// position now collides with the physical that's coming back; macOS resolves
+// by auto-deactivating one and the cursor "gets lost" on panels that end up
+// at the same origin. Parking the VD past the rightmost restored physical
+// inside this same transaction prevents the collision.
+- (CGError)restoreTopology:(NSDictionary<NSNumber *, NSValue *> *)topology
+                  toConfig:(CGDisplayConfigRef)config {
+    if (topology.count == 0) return kCGErrorSuccess;
 
     int32_t rightmost = 0;
     BOOL haveRightmost = NO;
@@ -1222,24 +1234,21 @@ static void ddPrimariesForColorSpace(CGColorSpaceRef cs,
     }
     int32_t parkX = haveRightmost ? rightmost + 256 : 0;
 
-    NSError *err = nil;
-    BOOL ok = [self performDisplayConfig:^CGError(CGDisplayConfigRef config) {
-        for (NSNumber *didNum in topology) {
-            CGDirectDisplayID did = didNum.unsignedIntValue;
-            if (!CGDisplayIsActive(did)) continue;
-            NSPoint p = [topology[didNum] pointValue];
-            CGError e = CGConfigureDisplayOrigin(config, did, (int32_t)p.x, (int32_t)p.y);
-            if (e != kCGErrorSuccess) return e;
-        }
-        if (virtualID != kCGNullDirectDisplay) {
-            CGError e = CGConfigureDisplayOrigin(config, virtualID, parkX, 0);
-            if (e != kCGErrorSuccess) return e;
-        }
-        return kCGErrorSuccess;
-    } error:&err];
-    if (!ok) {
-        NSLog(@"DisplayDisabler: Warning: topology restore failed: %@", err);
+    for (NSNumber *didNum in topology) {
+        CGDirectDisplayID did = didNum.unsignedIntValue;
+        if (!CGDisplayIsActive(did)) continue;
+        NSPoint p = [topology[didNum] pointValue];
+        CGError e = CGConfigureDisplayOrigin(config, did, (int32_t)p.x, (int32_t)p.y);
+        if (e != kCGErrorSuccess) return e;
     }
+
+    SLVirtualDisplay *vd = self.sharedVirtualDisplay;
+    if (vd) {
+        CGError e = CGConfigureDisplayOrigin(config, vd.displayID, parkX, 0);
+        if (e != kCGErrorSuccess) return e;
+    }
+
+    return kCGErrorSuccess;
 }
 
 - (BOOL)stopForcedHiDPIForDisplay:(CGDirectDisplayID)displayID error:(NSError **)error {
@@ -1249,22 +1258,32 @@ static void ddPrimariesForColorSpace(CGColorSpaceRef cs,
         return NO;
     }
 
-    [self unmirrorDisplay:displayID];
+    DDDisplayMode *pre                                     = self.preForceMode;
+    NSDictionary<NSNumber *, NSValue *> *topology          = self.preForceTopology;
 
-    // Restore the panel to its pre-force mode so the user isn't left on the
-    // reduced Standard resolution after stop.
-    DDDisplayMode *pre = self.preForceMode;
-    if (pre && pre.modeRef) {
-        NSError *restoreErr = nil;
-        if (![self performDisplayConfig:^CGError(CGDisplayConfigRef config) {
-            return CGConfigureDisplayWithDisplayMode(config, displayID, pre.modeRef, NULL);
-        } error:&restoreErr]) {
-            NSLog(@"DisplayDisabler: Warning: failed to restore pre-force mode on 0x%X: %@",
-                  displayID, restoreErr);
+    // Single atomic transaction: unmirror + pre-force mode restore + topology
+    // restore + virtual park. Splitting these across multiple
+    // performDisplayConfig calls leaves the cursor in ambiguous coordinate
+    // space between commits — macOS spends time re-resolving its position
+    // and the cursor visibly disappears for a beat. One transaction = one
+    // coherent state change = the OS reposition the cursor exactly once at
+    // the end.
+    NSError *err = nil;
+    BOOL ok = [self performDisplayConfig:^CGError(CGDisplayConfigRef config) {
+        CGError e = CGConfigureDisplayMirrorOfDisplay(config, displayID,
+                                                       kCGNullDirectDisplay);
+        if (e != kCGErrorSuccess) return e;
+        if (pre && pre.modeRef) {
+            e = CGConfigureDisplayWithDisplayMode(config, displayID, pre.modeRef, NULL);
+            if (e != kCGErrorSuccess) return e;
         }
-    }
+        return [self restoreTopology:topology toConfig:config];
+    } error:&err];
 
-    [self restorePreForceTopology];
+    if (!ok) {
+        NSLog(@"DisplayDisabler: Warning: stop transaction failed on 0x%X: %@",
+              displayID, err);
+    }
 
     self.forcedPhysical   = kCGNullDirectDisplay;
     self.forcedTarget     = nil;
@@ -1273,7 +1292,7 @@ static void ddPrimariesForColorSpace(CGColorSpaceRef cs,
     // sharedVirtualDisplay is deliberately retained — see property comment.
 
     NSLog(@"DisplayDisabler: Stopped forced HiDPI for display 0x%X", displayID);
-    return YES;
+    return ok;
 }
 
 - (BOOL)isHiDPIForcedForDisplay:(CGDirectDisplayID)displayID {
@@ -1282,26 +1301,37 @@ static void ddPrimariesForColorSpace(CGColorSpaceRef cs,
 
 - (void)cleanUpAllVirtualDisplays {
     if (self.forcedPhysical != kCGNullDirectDisplay) {
-        CGDirectDisplayID did = self.forcedPhysical;
-        [self unmirrorDisplay:did];
-        DDDisplayMode *pre = self.preForceMode;
-        if (pre && pre.modeRef) {
-            [self performDisplayConfig:^CGError(CGDisplayConfigRef config) {
-                return CGConfigureDisplayWithDisplayMode(config, did, pre.modeRef, NULL);
-            } error:NULL];
-        }
-        [self restorePreForceTopology];
+        CGDirectDisplayID did                              = self.forcedPhysical;
+        DDDisplayMode *pre                                 = self.preForceMode;
+        NSDictionary<NSNumber *, NSValue *> *topology      = self.preForceTopology;
+        // Same single-transaction discipline as -stopForcedHiDPIForDisplay:
+        // so the cursor doesn't disappear between commits during process
+        // shutdown.
+        [self performDisplayConfig:^CGError(CGDisplayConfigRef config) {
+            CGError e = CGConfigureDisplayMirrorOfDisplay(config, did,
+                                                           kCGNullDirectDisplay);
+            if (e != kCGErrorSuccess) return e;
+            if (pre && pre.modeRef) {
+                e = CGConfigureDisplayWithDisplayMode(config, did, pre.modeRef, NULL);
+                if (e != kCGErrorSuccess) return e;
+            }
+            return [self restoreTopology:topology toConfig:config];
+        } error:NULL];
+
         self.forcedPhysical   = kCGNullDirectDisplay;
         self.forcedTarget     = nil;
         self.preForceMode     = nil;
         self.preForceTopology = nil;
     }
 
-    // Releasing the shared VD here is mostly a formality — the process is
-    // about to exit, which guarantees OS-side teardown. Clear the reference
-    // so any late callbacks see a clean slate.
+    // Releasing the shared SLVirtualDisplay here is mostly a formality — the
+    // process is about to exit, which guarantees OS-side teardown. -destroy
+    // is the SL-API tear-down primitive; nil-ing the property without it would
+    // leak the VD until WindowServer noticed the dead client.
     if (self.sharedVirtualDisplay) {
+        SLVirtualDisplay *vd = self.sharedVirtualDisplay;
         self.sharedVirtualDisplay = nil;
+        [vd destroy];
         NSLog(@"DisplayDisabler: Released shared virtual display.");
     }
 }
@@ -1319,7 +1349,7 @@ static void ddPrimariesForColorSpace(CGColorSpaceRef cs,
     CGDirectDisplayID physical = self.forcedPhysical;
     if (!CGDisplayIsActive(physical)) return;  // pruneStaleVirtualDisplays handles
 
-    CGVirtualDisplay *vd = self.sharedVirtualDisplay;
+    SLVirtualDisplay *vd = self.sharedVirtualDisplay;
     if (!vd) return;
     CGDirectDisplayID virtualID = vd.displayID;
     self.realignInFlight = YES;
@@ -1410,9 +1440,23 @@ static void ddPrimariesForColorSpace(CGColorSpaceRef cs,
     if ([onlineSet containsObject:@(self.forcedPhysical)]) return;
 
     CGDirectDisplayID did = self.forcedPhysical;
+    NSDictionary<NSNumber *, NSValue *> *topology = self.preForceTopology;
     NSLog(@"DisplayDisabler: Forced display 0x%X disconnected, clearing force state.", did);
-    [self unmirrorDisplay:did];
-    [self restorePreForceTopology];
+
+    // Single transaction: unmirror the now-offline ID + restore origins of
+    // remaining displays + park the virtual. The forced display is gone so
+    // the cursor isn't on it, but the survivors' origins changing in
+    // separate commits would still glitch the cursor on whichever screen
+    // it's currently on.
+    [self performDisplayConfig:^CGError(CGDisplayConfigRef config) {
+        CGError e = CGConfigureDisplayMirrorOfDisplay(config, did,
+                                                       kCGNullDirectDisplay);
+        // Unmirror on a vanished ID may legitimately fail; ignore and proceed
+        // with the topology restore for the survivors.
+        (void)e;
+        return [self restoreTopology:topology toConfig:config];
+    } error:NULL];
+
     self.forcedPhysical   = kCGNullDirectDisplay;
     self.forcedTarget     = nil;
     self.preForceMode     = nil;

@@ -64,7 +64,7 @@ static const CGFloat kSwitchRowPad    = 18;
     [[NSUserDefaults standardUserDefaults] registerDefaults:@{
         kAutoManage:        @NO,
         kShowNotifications: @YES,
-        kConfirmDisable:    @NO,
+        kConfirmDisable:    @YES,
         kShowResolutions:   @YES,
     }];
 }
@@ -88,6 +88,10 @@ static const CGFloat kSwitchRowPad    = 18;
 }
 
 - (void)postNotification:(NSString *)title body:(NSString *)body {
+    [self postNotification:title body:body identifier:[[NSUUID UUID] UUIDString]];
+}
+
+- (void)postNotification:(NSString *)title body:(NSString *)body identifier:(NSString *)identifier {
     if (![self pref:kShowNotifications]) return;
 
     UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
@@ -95,7 +99,6 @@ static const CGFloat kSwitchRowPad    = 18;
     content.body = body;
     content.sound = [UNNotificationSound defaultSound];
 
-    NSString *identifier = [[NSUUID UUID] UUIDString];
     UNNotificationRequest *request =
         [UNNotificationRequest requestWithIdentifier:identifier content:content trigger:nil];
 
@@ -108,12 +111,23 @@ static const CGFloat kSwitchRowPad    = 18;
 - (void)setupStatusItem {
     self.statusItem = [[NSStatusBar systemStatusBar]
                        statusItemWithLength:NSVariableStatusItemLength];
+    [self updateStatusIcon:NO];
+    self.statusItem.button.toolTip = @"DisplayDisabler";
+}
 
-    NSImage *icon = [NSImage imageWithSystemSymbolName:@"display"
+- (void)updateStatusIcon:(BOOL)hasDisabledDisplay {
+    NSString *symbolName = hasDisabledDisplay
+        ? @"display.trianglebadge.exclamationmark"
+        : @"display";
+
+    NSImage *icon = [NSImage imageWithSystemSymbolName:symbolName
                                accessibilityDescription:@"DisplayDisabler"];
+    // Fallback for macOS 13 where the badge symbol may not exist
+    if (!icon)
+        icon = [NSImage imageWithSystemSymbolName:@"display"
+                           accessibilityDescription:@"DisplayDisabler"];
     [icon setTemplate:YES];
     self.statusItem.button.image = icon;
-    self.statusItem.button.toolTip = @"DisplayDisabler";
 }
 
 // ── Menu building ───────────────────────────────────────────────────────────
@@ -124,10 +138,15 @@ static const CGFloat kSwitchRowPad    = 18;
 
     NSArray<DDDisplayInfo *> *displays = [self.displayManager allDisplays];
     NSUInteger activeCount = 0;
+    BOOL anyDisabled = NO;
     for (DDDisplayInfo *d in displays) {
         if (d.isActive || [self.displayManager isHiDPIForcedForDisplay:d.displayID])
             activeCount++;
+        else
+            anyDisabled = YES;
     }
+
+    [self updateStatusIcon:anyDisabled];
 
     [self addLabelToMenu:menu title:
         [NSString stringWithFormat:@"DisplayDisabler v%s", APP_VERSION]];
@@ -177,15 +196,23 @@ static const CGFloat kSwitchRowPad    = 18;
     BOOL effectivelyActive = display.isActive ||
         [self.displayManager isHiDPIForcedForDisplay:display.displayID];
     NSString *dot = effectivelyActive ? @"\u25CF " : @"\u25CB ";
-    NSString *title = [NSString stringWithFormat:@"%@%@ \u2014 0x%X",
-                       dot, display.name, display.displayID];
 
-    NSMenuItem *nameItem = [[NSMenuItem alloc] initWithTitle:title
+    // Display name prominent, hex ID dimmed for power users
+    NSMutableAttributedString *attrTitle = [[NSMutableAttributedString alloc]
+        initWithString:[NSString stringWithFormat:@"%@%@", dot, display.name]
+            attributes:@{NSFontAttributeName: [NSFont menuBarFontOfSize:14]}];
+    [attrTitle appendAttributedString:[[NSAttributedString alloc]
+        initWithString:[NSString stringWithFormat:@"  0x%X", display.displayID]
+            attributes:@{
+                NSFontAttributeName: [NSFont monospacedSystemFontOfSize:10
+                                        weight:NSFontWeightRegular],
+                NSForegroundColorAttributeName: [NSColor tertiaryLabelColor]
+            }]];
+
+    NSMenuItem *nameItem = [[NSMenuItem alloc] initWithTitle:@""
                                                       action:nil keyEquivalent:@""];
     nameItem.enabled = NO;
-    nameItem.attributedTitle = [[NSAttributedString alloc]
-        initWithString:title
-            attributes:@{NSFontAttributeName: [NSFont menuBarFontOfSize:14]}];
+    nameItem.attributedTitle = attrTitle;
     [menu addItem:nameItem];
 
     // Tags line
@@ -209,20 +236,13 @@ static const CGFloat kSwitchRowPad    = 18;
 }
 
 - (void)addActiveDisplayControls:(DDDisplayInfo *)display toMenu:(NSMenu *)menu {
-    // Resolution info
-    NSString *resStr;
-    if (display.isHiDPI && display.logicalWidth > 0) {
-        resStr = [NSString stringWithFormat:@"    %zu \u00D7 %zu @%zux  %.0fHz",
-                  display.pixelWidth, display.pixelHeight,
-                  display.pixelWidth / display.logicalWidth,
-                  display.refreshRate];
-    } else {
-        NSMutableString *s = [NSMutableString stringWithFormat:@"    %zu \u00D7 %zu",
-                              display.pixelWidth, display.pixelHeight];
-        if (display.refreshRate > 0)
-            [s appendFormat:@"  %.0fHz", display.refreshRate];
-        resStr = s;
-    }
+    // Resolution info — always omit Hz when 0
+    NSMutableString *resStr = [NSMutableString stringWithFormat:@"    %zu \u00D7 %zu",
+                               display.pixelWidth, display.pixelHeight];
+    if (display.isHiDPI && display.logicalWidth > 0)
+        [resStr appendFormat:@" @%zux", display.pixelWidth / display.logicalWidth];
+    if (display.refreshRate > 0)
+        [resStr appendFormat:@"  %.0fHz", display.refreshRate];
     [self addLabelToMenu:menu title:resStr];
 
     // All Resolutions submenu
@@ -327,6 +347,7 @@ static const CGFloat kSwitchRowPad    = 18;
     sw.target = self;
     sw.action = action;
     sw.identifier = identifier;
+    sw.accessibilityLabel = title;
     [row addSubview:sw];
 
     NSTextField *label = [NSTextField labelWithString:title];
@@ -632,7 +653,8 @@ static const CGFloat kSwitchRowPad    = 18;
     NSError *error = nil;
     if ([self.displayManager disableDisplay:builtIn.displayID error:&error]) {
         [self postNotification:@"Built-in Display Disabled"
-                          body:@"External monitor detected."];
+                          body:@"External monitor detected."
+                    identifier:@"auto-manage"];
     } else {
         NSLog(@"DisplayDisabler: Auto-disable failed: %@", error);
     }
@@ -649,7 +671,8 @@ static const CGFloat kSwitchRowPad    = 18;
     NSError *error = nil;
     if ([self.displayManager enableDisplay:builtIn.displayID error:&error]) {
         [self postNotification:@"Built-in Display Re-enabled"
-                          body:@"No external monitor detected."];
+                          body:@"No external monitor detected."
+                    identifier:@"auto-manage"];
     } else {
         NSLog(@"DisplayDisabler: Auto-reenable failed: %@", error);
     }

@@ -39,18 +39,17 @@ static NSError *injectorError(NSInteger code, NSString *message) {
     return instance;
 }
 
+// Kept in sync with AppDelegate.m:kCommonHiDPIResolutions — the two paths
+// (Force HiDPI via virtual display, Crisp HiDPI via plist override) should
+// offer the same set of custom sizes so the user doesn't see one list via
+// one path and a different list via the other.
 - (NSArray<NSValue *> *)defaultCustomResolutions {
     return @[
-        [NSValue valueWithSize:NSMakeSize(1024,  640)],
-        [NSValue valueWithSize:NSMakeSize(1280,  800)],
-        [NSValue valueWithSize:NSMakeSize(1440,  900)],
-        [NSValue valueWithSize:NSMakeSize(1600, 1000)],
-        [NSValue valueWithSize:NSMakeSize(1680, 1050)],
-        [NSValue valueWithSize:NSMakeSize(1920, 1080)],
-        [NSValue valueWithSize:NSMakeSize(1920, 1200)],
-        [NSValue valueWithSize:NSMakeSize(2048, 1280)],
-        [NSValue valueWithSize:NSMakeSize(2560, 1440)],
-        [NSValue valueWithSize:NSMakeSize(2560, 1600)],
+        [NSValue valueWithSize:NSMakeSize(1920, 1080)],   // 16:9  FHD
+        [NSValue valueWithSize:NSMakeSize(1920, 1200)],   // 16:10
+        [NSValue valueWithSize:NSMakeSize(2560, 1440)],   // 16:9  QHD
+        [NSValue valueWithSize:NSMakeSize(2560, 1600)],   // 16:10
+        [NSValue valueWithSize:NSMakeSize(3840, 2160)],   // 16:9  UHD
     ];
 }
 

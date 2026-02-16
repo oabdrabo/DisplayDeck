@@ -29,12 +29,11 @@ static const CGFloat kSwitchRowPad     = 18;
 static const CGFloat kSwitchLabelGap   = 8;
 
 // ── Modes-submenu layout ────────────────────────────────────────────────────
-// Column widths (in chars) tuned for a monospaced font. Covers 8K and 5-digit
-// pixel counts with room to spare.
+// Column widths (in chars) tuned for a monospaced font. Covers 8K + 5-digit
+// logical counts, widest label string ("Larger Text"), and 3-digit refresh.
 
-static const NSUInteger kModeColPixels  = 17;
 static const NSUInteger kModeColLogical = 17;
-static const NSUInteger kModeColType    = 10;
+static const NSUInteger kModeColLabel   = 14;
 
 // Common HiDPI logical resolutions the user can force on any display, even
 // when the panel doesn't advertise them as a mode. These go through the
@@ -634,12 +633,22 @@ static const size_t kCommonHiDPICount =
     NSFont *mono     = [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightRegular];
     NSFont *monoBold = [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightMedium];
 
+    // Find the panel-native pixel backing so we can classify every other mode
+    // relative to it ("More Space" when scaled above, "Larger Text" when
+    // scaled below, "Default" when it IS the native one). Modes whose pixel
+    // count equals the logical (Standard variants) are tagged "Full pixel"
+    // regardless of where they sit relative to native — they're a qualitative
+    // difference (no 2× supersample), not a position on the scale axis.
+    size_t nativePW = 0;
+    for (DDDisplayMode *m in modes) {
+        if (m.isDefaultForDisplay && m.isHiDPI) { nativePW = m.pixelWidth; break; }
+    }
+
     NSMenuItem *header = [[NSMenuItem alloc]
         initWithTitle:@"" action:nil keyEquivalent:@""];
-    NSString *headerLine = [NSString stringWithFormat:@"%@%@%@%@",
-        [@"Pixels"    stringByPaddingToLength:kModeColPixels  withString:@" " startingAtIndex:0],
+    NSString *headerLine = [NSString stringWithFormat:@"%@%@%@",
         [@"Looks Like" stringByPaddingToLength:kModeColLogical withString:@" " startingAtIndex:0],
-        [@"Type"      stringByPaddingToLength:kModeColType    withString:@" " startingAtIndex:0],
+        [@"Type"       stringByPaddingToLength:kModeColLabel   withString:@" " startingAtIndex:0],
         @"Rate"];
     header.attributedTitle = [[NSAttributedString alloc]
         initWithString:headerLine
@@ -653,21 +662,28 @@ static const size_t kCommonHiDPICount =
         NSString *rateStr = mode.refreshRate > 0
             ? [NSString stringWithFormat:@"%.0fHz", mode.refreshRate] : @"--";
 
-        NSString *pixelCol = [[NSString stringWithFormat:@"%zu \u00D7 %zu",
-            mode.pixelWidth, mode.pixelHeight]
-            stringByPaddingToLength:kModeColPixels withString:@" " startingAtIndex:0];
         NSString *logicalCol = [[NSString stringWithFormat:@"%zu \u00D7 %zu",
             mode.logicalWidth, mode.logicalHeight]
             stringByPaddingToLength:kModeColLogical withString:@" " startingAtIndex:0];
-        // Pad Type column by 1 extra char so the "★" marker fits without
-        // shifting the Rate column — keeps monospaced alignment intact.
-        NSString *typeBase = mode.isHiDPI ? @"HiDPI" : @"Standard";
-        NSString *typeCol = [[NSString stringWithFormat:@"%@ %@",
-            typeBase, mode.isDefaultForDisplay ? @"\u2605" : @" "]
-            stringByPaddingToLength:kModeColType withString:@" " startingAtIndex:0];
 
-        NSString *line = [NSString stringWithFormat:@"%@%@%@%@",
-            pixelCol, logicalCol, typeCol, rateStr];
+        // Semantic label, System Settings-style.
+        NSString *label;
+        if (!mode.isHiDPI) {
+            label = @"Full pixel";
+        } else if (mode.isDefaultForDisplay) {
+            label = @"Default \u2605";
+        } else if (nativePW > 0 && mode.pixelWidth > nativePW) {
+            label = @"More Space";
+        } else if (nativePW > 0 && mode.pixelWidth < nativePW) {
+            label = @"Larger Text";
+        } else {
+            label = @"HiDPI";  // no native identified, or equal-pixel variant
+        }
+        NSString *labelCol = [label stringByPaddingToLength:kModeColLabel
+                                                  withString:@" " startingAtIndex:0];
+
+        NSString *line = [NSString stringWithFormat:@"%@%@%@",
+                          logicalCol, labelCol, rateStr];
 
         NSMenuItem *item = [[NSMenuItem alloc]
             initWithTitle:line
@@ -695,7 +711,7 @@ static const size_t kCommonHiDPICount =
     [submenu addItem:countItem];
 
     NSMenuItem *legend = [[NSMenuItem alloc]
-        initWithTitle:@"\u2605 panel-native (no scaling, crispest)"
+        initWithTitle:@"Default \u2605 = panel-native (no scaling, crispest)"
                action:nil keyEquivalent:@""];
     legend.enabled = NO;
     [submenu addItem:legend];

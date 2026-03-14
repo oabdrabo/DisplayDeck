@@ -482,23 +482,60 @@ static void displayReconfigCallback(CGDirectDisplayID display __unused,
 }
 
 - (CGSize)physicalPixelsForDisplay:(CGDirectDisplayID)displayID {
+    // Returns the dimensions of the panel's MIRROR-USABLE rectangle, which is
+    // what the Force HiDPI options list must aspect-match. On a non-notched
+    // panel this is simply the full pixel grid. On a notched panel (M3 Air,
+    // 14/16" MBP M1+) this is the BELOW-NOTCH rectangle — macOS's mirror
+    // compositor aspect-fits the source into that rectangle, so any source
+    // aspect that doesn't match produces pillarbox/letterbox bars the OS
+    // won't let us override (empirically verified: all SLS safe-aperture,
+    // menu-bar, connection-property, SLVirtualDisplay type/subtype/options,
+    // and post-mirror panel-mode-switch knobs either no-op or get reverted).
+    //
+    // Detection: enumerate Standard (logical == pixel) panel modes with the
+    // duplicate-low-res flag set. Group by width. At the largest width where
+    // more than one height exists, take the MIN height — that's the below-
+    // notch rectangle. Widths with single heights stay as-is. If every width
+    // has only one height, the panel is not notched and we return the max.
     NSDictionary *opts = @{
         (__bridge NSString *)kCGDisplayShowDuplicateLowResolutionModes: @YES
     };
-    CFArrayRef allModes = CGDisplayCopyAllDisplayModes(displayID, (__bridge CFDictionaryRef)opts);
+    CFArrayRef allModes = CGDisplayCopyAllDisplayModes(displayID,
+        (__bridge CFDictionaryRef)opts);
     CGSize result = CGSizeZero;
+
     if (allModes) {
+        NSMutableDictionary<NSNumber *, NSMutableSet<NSNumber *> *> *standardByWidth =
+            [NSMutableDictionary dictionary];
+        size_t maxStdW = 0;
         CFIndex n = CFArrayGetCount(allModes);
         for (CFIndex i = 0; i < n; i++) {
             CGDisplayModeRef m = (CGDisplayModeRef)CFArrayGetValueAtIndex(allModes, i);
-            if (CGDisplayModeGetIOFlags(m) & 0x04) {  // kDisplayModeDefaultFlag
-                result.width  = CGDisplayModeGetPixelWidth(m);
-                result.height = CGDisplayModeGetPixelHeight(m);
-                break;
+            size_t pw = CGDisplayModeGetPixelWidth(m);
+            size_t ph = CGDisplayModeGetPixelHeight(m);
+            if (pw != CGDisplayModeGetWidth(m))  continue;  // Standard only
+            if (ph != CGDisplayModeGetHeight(m)) continue;
+            NSMutableSet<NSNumber *> *heights = standardByWidth[@(pw)];
+            if (!heights) {
+                heights = [NSMutableSet set];
+                standardByWidth[@(pw)] = heights;
             }
+            [heights addObject:@(ph)];
+            if (pw > maxStdW) maxStdW = pw;
+        }
+        if (maxStdW > 0) {
+            NSMutableSet<NSNumber *> *heights = standardByWidth[@(maxStdW)];
+            size_t h = SIZE_MAX;
+            for (NSNumber *hh in heights) {
+                size_t v = hh.unsignedLongValue;
+                if (v < h) h = v;
+            }
+            result.width  = maxStdW;
+            result.height = h;
         }
         CFRelease(allModes);
     }
+
     if (result.width == 0 || result.height == 0) {
         CGDisplayModeRef cur = CGDisplayCopyDisplayMode(displayID);
         if (cur) {
@@ -967,16 +1004,15 @@ static void displayReconfigCallback(CGDirectDisplayID display __unused,
     } error:&mirrorError];
     if (!mirrored) { deliver(NO, mirrorError); return; }
 
-    // No explicit panel-mode switch. With the SLVirtualDisplay backbone (whose
-    // configuration is cloned from the source panel's CoreDisplay info), the
-    // mirror compositor auto-selects the panel's own HiDPI variant as the
-    // mirror destination's runtime mode (e.g. pixel 5120×3328 @ logical 2560×
-    // 1664 — the same scaled HiDPI mode macOS uses natively when you pick
-    // "Looks like 2560×1664" in System Settings without forcing). Pre-empting
-    // that with our own CGConfigureDisplayWithDisplayMode regressed the panel
-    // to a Standard mirror-runtime variant (pixel = logical = 2560×1664) that
-    // produced visible pillarbox bands and wasted the SLVirtualDisplay path's
-    // central advantage.
+    // No post-mirror panel-mode switch. Empirically verified the mirror
+    // destination panel is locked to the macOS-synthesized mirror-runtime
+    // mode (flag kDisplayModeValidForMirroringFlag, 0x00200000) — explicit
+    // CGConfigureDisplayWithDisplayMode back to a NATIVE-flagged variant
+    // returns CGError 0 but the OS immediately re-synthesizes the mirror
+    // mode. Forcing Force HiDPI options to aspect-match the mirror's
+    // below-notch destination rectangle is the working fix (see
+    // usablePanelPixelsForDisplay: — the aspect-lock now uses the below-
+    // notch dimensions on notched panels).
 
     // Pin the virtual onto OUR advertised (targetLogical × targetLogical HiDPI)
     // mode. After the mirror+panel-switch above, macOS may have auto-selected

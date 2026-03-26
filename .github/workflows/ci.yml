@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  repository-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect tracked files
+        run: git ls-files | sort | sed -n '1,120p'
+      - name: Check documentation
+        run: |
+          test -f docs/project-overview.md
+          test -f docs/architecture.md
+          test -f docs/operations.md

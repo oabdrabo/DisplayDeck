@@ -5,16 +5,20 @@
 
 APP_NAME   = DisplayDisabler
 BUNDLE     = $(APP_NAME).app
+SRCDIR     = src
+BUILDDIR   = build
 
 CC         = clang
 CFLAGS     = -fobjc-arc -Wall -Wextra -O2 -fstack-protector-strong \
-             -mmacosx-version-min=14.0 -MMD -MP
+             -mmacosx-version-min=14.0 -MMD -MP -I$(SRCDIR)
 FRAMEWORKS = -framework Cocoa -framework CoreGraphics -framework IOKit \
              -framework ServiceManagement -framework UserNotifications \
              -framework CoreDisplay
-SOURCES    = main.m AppDelegate.m DisplayManager.m Brightness.m HiDPIInjector.m
-OBJECTS    = $(SOURCES:.m=.o)
-DEPS       = $(SOURCES:.m=.d)
+
+SOURCES    = $(SRCDIR)/main.m $(SRCDIR)/AppDelegate.m $(SRCDIR)/DisplayManager.m \
+             $(SRCDIR)/Brightness.m $(SRCDIR)/HiDPIInjector.m
+OBJECTS    = $(patsubst $(SRCDIR)/%.m,$(BUILDDIR)/%.o,$(SOURCES))
+DEPS       = $(OBJECTS:.o=.d)
 EXECUTABLE = $(APP_NAME)
 
 .PHONY: all clean bundle sign install uninstall icon
@@ -23,8 +27,11 @@ all: bundle sign
 
 -include $(DEPS)
 
-%.o: %.m
+$(BUILDDIR)/%.o: $(SRCDIR)/%.m | $(BUILDDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILDDIR):
+	@mkdir -p $(BUILDDIR)
 
 $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(CFLAGS) $(FRAMEWORKS) $(OBJECTS) -o $@
@@ -32,9 +39,9 @@ $(EXECUTABLE): $(OBJECTS)
 # Render AppIcon.icns from the "display" SF Symbol on a dark rounded-rect
 # background. One-shot build-time helper; the .icns is committed to the
 # repo so CI / downstream builders don't need to re-run it.
-AppIcon.icns: build_icon.m
+AppIcon.icns: $(SRCDIR)/build_icon.m
 	@$(CC) -fobjc-arc -O0 -mmacosx-version-min=14.0 -framework Cocoa \
-	    build_icon.m -o /tmp/dd-build-icon
+	    $(SRCDIR)/build_icon.m -o /tmp/dd-build-icon
 	@/tmp/dd-build-icon AppIcon.iconset
 	@iconutil -c icns AppIcon.iconset -o AppIcon.icns
 	@rm -rf AppIcon.iconset /tmp/dd-build-icon
@@ -65,6 +72,6 @@ uninstall:
 	@echo "Removed /Applications/$(BUNDLE)"
 
 clean:
-	@rm -f $(OBJECTS) $(DEPS) $(EXECUTABLE) AppIcon.icns
+	@rm -rf $(BUILDDIR) $(EXECUTABLE) AppIcon.icns
 	@rm -rf "$(BUNDLE)" AppIcon.iconset
 	@echo "Cleaned"

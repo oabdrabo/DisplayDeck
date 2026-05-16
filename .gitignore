@@ -28,3 +28,4 @@ AppIcon.iconset/
 # clang --analyze output (top-level report plists; keep Info.plist)
 /*.plist
 !/Info.plist
+build/

@@ -274,8 +274,12 @@ Run:
 Useful uninstaller options:
 
 ```bash
+./scripts/uninstall_smart.sh --app
+./scripts/uninstall_smart.sh --cli
+./scripts/uninstall_smart.sh --full
 ./scripts/uninstall_smart.sh --dry-run
 ./scripts/uninstall_smart.sh --yes
+./scripts/uninstall_smart.sh --keep-app
 ./scripts/uninstall_smart.sh --keep-binary
 ./scripts/uninstall_smart.sh --keep-config
 ./scripts/uninstall_smart.sh --keep-logs
@@ -283,6 +287,7 @@ Useful uninstaller options:
 
 The uninstaller removes:
 
+- the menu-bar app, when using `--app` or `--full`
 - the LaunchAgent
 - the old LaunchAgent name, if present
 - the watchdog script

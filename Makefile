@@ -47,7 +47,9 @@ test-smart:
 	zsh scripts/install_smart.sh --dry-run --app --yes >/dev/null
 	zsh scripts/install_smart.sh --dry-run --cli --no-download --yes --no-watchdog >/dev/null
 	zsh scripts/install_smart.sh --dry-run --full --no-download --yes --no-watchdog >/dev/null
-	zsh scripts/uninstall_smart.sh --dry-run --yes --keep-binary --keep-config --keep-logs >/dev/null
+	zsh scripts/uninstall_smart.sh --dry-run --app --yes >/dev/null
+	zsh scripts/uninstall_smart.sh --dry-run --cli --yes --keep-binary --keep-config --keep-logs >/dev/null
+	zsh scripts/uninstall_smart.sh --dry-run --full --yes --keep-app --keep-binary --keep-config --keep-logs >/dev/null
 
 bundle: $(EXECUTABLE) AppIcon.icns
 	@mkdir -p "$(BUNDLE)/Contents/MacOS"

@@ -5,6 +5,9 @@ set -e
 ZSHRC="$HOME/.zshrc"
 SCRIPTS_DIR="$HOME/Scripts"
 LAUNCH_AGENTS_DIR="$HOME/Library/LaunchAgents"
+APP_NAME="DisplayDisabler"
+APP_BUNDLE="$APP_NAME.app"
+APP_INSTALL_PATH="${APP_INSTALL_PATH:-/Applications/$APP_BUNDLE}"
 
 CONFIG_FILE="$HOME/.displaydisabler-watchdog.conf"
 WATCHDOG_LABEL="com.displaydisabler.watchdog"
@@ -27,6 +30,8 @@ ALIAS_END="# <<< DisplayDisabler smart aliases <<<"
 
 DRY_RUN="0"
 ASSUME_YES="0"
+UNINSTALL_PROFILE=""
+KEEP_APP="0"
 KEEP_BINARY="0"
 KEEP_CONFIG="0"
 KEEP_LOGS="0"
@@ -36,8 +41,12 @@ usage() {
 Usage: ./scripts/uninstall_smart.sh [options]
 
 Options:
+  --app           Remove the menu-bar app only
+  --cli           Remove CLI aliases/helpers only
+  --full          Remove both menu-bar app and CLI helpers
   --dry-run       Show planned removals without changing files
   --yes           Use default answers for prompts
+  --keep-app      Leave /Applications/DisplayDisabler.app installed
   --keep-binary   Leave /usr/local/bin/display_disable installed
   --keep-config   Leave ~/.displaydisabler-watchdog.conf installed
   --keep-logs     Leave watchdog log files installed
@@ -47,11 +56,23 @@ EOF_USAGE
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    --app)
+      UNINSTALL_PROFILE="app"
+      ;;
+    --cli)
+      UNINSTALL_PROFILE="cli"
+      ;;
+    --full)
+      UNINSTALL_PROFILE="full"
+      ;;
     --dry-run)
       DRY_RUN="1"
       ;;
     --yes)
       ASSUME_YES="1"
+      ;;
+    --keep-app)
+      KEEP_APP="1"
       ;;
     --keep-binary)
       KEEP_BINARY="1"
@@ -100,17 +121,69 @@ prompt_default() {
   eval "$__var=\"\$answer\""
 }
 
-remove_file() {
-  local path="$1"
-  local label="$2"
+prompt_choice() {
+  local __var="$1"
+  local prompt="$2"
+  local default="$3"
+  local answer
 
-  if [ "$DRY_RUN" = "1" ]; then
-    echo "[dry-run] Would remove $label: $path"
+  if [ "$ASSUME_YES" = "1" ]; then
+    echo "$prompt [$default]: $default"
+    eval "$__var=\"\$default\""
     return
   fi
 
-  if [ -e "$path" ]; then
-    rm -f "$path"
+  read "answer?$prompt [$default]: "
+  answer="${answer:-$default}"
+  eval "$__var=\"\$answer\""
+}
+
+normalize_uninstall_profile() {
+  local profile="$1"
+  case "$profile" in
+    app|a|menu|menubar|menu-bar)
+      echo "app"
+      ;;
+    cli|c|shell)
+      echo "cli"
+      ;;
+    full|f|both|all)
+      echo "full"
+      ;;
+    *)
+      echo ""
+      ;;
+  esac
+}
+
+remove_file() {
+  local target_path="$1"
+  local label="$2"
+
+  if [ "$DRY_RUN" = "1" ]; then
+    echo "[dry-run] Would remove $label: $target_path"
+    return
+  fi
+
+  if [ -e "$target_path" ]; then
+    rm -f "$target_path"
+    echo "Removed $label."
+  else
+    echo "No $label found."
+  fi
+}
+
+remove_path() {
+  local target_path="$1"
+  local label="$2"
+
+  if [ "$DRY_RUN" = "1" ]; then
+    echo "[dry-run] Would remove $label: $target_path"
+    return
+  fi
+
+  if [ -e "$target_path" ]; then
+    rm -rf "$target_path"
     echo "Removed $label."
   else
     echo "No $label found."
@@ -172,56 +245,84 @@ remove_aliases() {
   echo "Backup created: $ZSHRC.displaydisabler-uninstall.bak"
 }
 
-bootout_plist "$PLIST_PATH" "LaunchAgent"
-remove_file "$PLIST_PATH" "LaunchAgent"
-
-bootout_plist "$OLD_PLIST_PATH" "old LaunchAgent"
-remove_file "$OLD_PLIST_PATH" "old LaunchAgent"
-
-remove_file "$WATCHDOG_SCRIPT" "watchdog script"
-remove_file "$OLD_WATCHDOG_SCRIPT" "old watchdog script"
-remove_file "$SMART_SCRIPT" "smart command"
-remove_file "$SAFE_SCRIPT" "safe-disable wrapper"
-remove_file "$TRUST_SCRIPT" "trust-displays script"
-remove_file "$LIB_SCRIPT" "smart helper library"
-
-if [ "$KEEP_CONFIG" = "1" ]; then
-  echo "Keeping watchdog config: $CONFIG_FILE"
-else
-  remove_file "$CONFIG_FILE" "watchdog config"
+if [ -z "$UNINSTALL_PROFILE" ]; then
+  echo "Choose uninstall type:"
+  echo "  app  - menu-bar app only"
+  echo "  cli  - shell aliases/helpers only"
+  echo "  full - app plus CLI fallback"
+  echo
+  prompt_choice UNINSTALL_PROFILE "Uninstall type: app, cli or full" "full"
 fi
 
-remove_file "$STATE_FILE" "watchdog state file"
-remove_aliases
+UNINSTALL_PROFILE="$(normalize_uninstall_profile "$UNINSTALL_PROFILE")"
+if [ -z "$UNINSTALL_PROFILE" ]; then
+  echo "Invalid uninstall type. Use app, cli, or full." >&2
+  exit 1
+fi
 
-if [ "$KEEP_LOGS" = "1" ]; then
-  echo "Keeping watchdog logs."
-else
-  prompt_default REMOVE_LOG "Remove watchdog log files? y/N" "N"
-  if [[ "$REMOVE_LOG" =~ '^[Yy]$' ]]; then
-    remove_file "$LOG_FILE" "watchdog log file"
-    remove_file "$LOG_FILE.1" "rotated watchdog log file"
+echo "Uninstall type: $UNINSTALL_PROFILE"
+echo
+
+if [ "$UNINSTALL_PROFILE" = "app" ] || [ "$UNINSTALL_PROFILE" = "full" ]; then
+  if [ "$KEEP_APP" = "1" ]; then
+    echo "Keeping menu-bar app: $APP_INSTALL_PATH"
   else
-    echo "Keeping watchdog log files."
+    remove_path "$APP_INSTALL_PATH" "menu-bar app"
   fi
 fi
 
-if [ "$KEEP_BINARY" = "1" ]; then
-  echo "Keeping display_disable binary: $BINARY_PATH"
-else
-  prompt_default REMOVE_BINARY "Remove display_disable binary from /usr/local/bin? Y/n" "Y"
-  if [[ "$REMOVE_BINARY" =~ '^[Yy]$' ]]; then
-    if [ "$DRY_RUN" = "1" ]; then
-      echo "[dry-run] Would remove binary: $BINARY_PATH"
-    elif [ -f "$BINARY_PATH" ]; then
-      sudo rm "$BINARY_PATH"
-      echo "Removed display_disable binary:"
-      echo "  $BINARY_PATH"
-    else
-      echo "No display_disable binary found."
-    fi
+if [ "$UNINSTALL_PROFILE" = "cli" ] || [ "$UNINSTALL_PROFILE" = "full" ]; then
+  bootout_plist "$PLIST_PATH" "LaunchAgent"
+  remove_file "$PLIST_PATH" "LaunchAgent"
+
+  bootout_plist "$OLD_PLIST_PATH" "old LaunchAgent"
+  remove_file "$OLD_PLIST_PATH" "old LaunchAgent"
+
+  remove_file "$WATCHDOG_SCRIPT" "watchdog script"
+  remove_file "$OLD_WATCHDOG_SCRIPT" "old watchdog script"
+  remove_file "$SMART_SCRIPT" "smart command"
+  remove_file "$SAFE_SCRIPT" "safe-disable wrapper"
+  remove_file "$TRUST_SCRIPT" "trust-displays script"
+  remove_file "$LIB_SCRIPT" "smart helper library"
+
+  if [ "$KEEP_CONFIG" = "1" ]; then
+    echo "Keeping watchdog config: $CONFIG_FILE"
   else
-    echo "Keeping display_disable binary."
+    remove_file "$CONFIG_FILE" "watchdog config"
+  fi
+
+  remove_file "$STATE_FILE" "watchdog state file"
+  remove_aliases
+
+  if [ "$KEEP_LOGS" = "1" ]; then
+    echo "Keeping watchdog logs."
+  else
+    prompt_default REMOVE_LOG "Remove watchdog log files? y/N" "N"
+    if [[ "$REMOVE_LOG" =~ '^[Yy]$' ]]; then
+      remove_file "$LOG_FILE" "watchdog log file"
+      remove_file "$LOG_FILE.1" "rotated watchdog log file"
+    else
+      echo "Keeping watchdog log files."
+    fi
+  fi
+
+  if [ "$KEEP_BINARY" = "1" ]; then
+    echo "Keeping display_disable binary: $BINARY_PATH"
+  else
+    prompt_default REMOVE_BINARY "Remove display_disable binary from /usr/local/bin? Y/n" "Y"
+    if [[ "$REMOVE_BINARY" =~ '^[Yy]$' ]]; then
+      if [ "$DRY_RUN" = "1" ]; then
+        echo "[dry-run] Would remove binary: $BINARY_PATH"
+      elif [ -f "$BINARY_PATH" ]; then
+        sudo rm "$BINARY_PATH"
+        echo "Removed display_disable binary:"
+        echo "  $BINARY_PATH"
+      else
+        echo "No display_disable binary found."
+      fi
+    else
+      echo "Keeping display_disable binary."
+    fi
   fi
 fi
 

@@ -15,12 +15,28 @@ The app now includes:
 - event-driven smart recovery: display change callbacks trigger a short
   debounce check, then the app re-enables the built-in display if no trusted
   external monitor remains active
+- an internal safety watchdog that runs only while the built-in display is
+  inactive, so disconnect recovery can still happen when CoreGraphics stops
+  reporting the disabled built-in panel as an online display
+- a fallback disabled built-in row in the menu when the app knows the last
+  built-in display ID but macOS is no longer listing that panel
+- manual brightness presets for displays supported by macOS DisplayServices or
+  DDC/CI; the app sets brightness on demand and does not keep enforcing it
 - System Status and Doctor menu actions for a lightweight, copyable runtime
   report
 - Launch at Login and trusted-display auto-manage from the app UI
 
-The app recovery path is event-driven, not polling-based. The short delay is
-only a confirmation window after macOS reports a display topology change.
+The app recovery path starts from display-change events. If the built-in display
+is inactive, the app also arms a lightweight in-process watchdog that checks
+roughly every two seconds and stops again once the built-in display is active.
+
+If you manually choose `Enable` on the built-in display, the app turns
+Auto-manage off and briefly suppresses auto-disable. This prevents the built-in
+panel from being re-disabled immediately while a trusted external monitor is
+still connected.
+
+The Settings switches use app-rendered blue/gray controls so their color stays
+consistent after reopening the submenu.
 
 ## Unified installer
 
@@ -144,6 +160,13 @@ trusted external display count and watchdog LaunchAgent state.
 installs, missing CLI pieces are reported as `info`; in CLI/full installs,
 missing `display_disable`, config or failing `display_disable list` checks are
 reported as failures and return a non-zero exit code.
+
+The menu-bar app also has its own `System Status...` and `Run Doctor...`
+actions. Those report the app runtime state from CoreGraphics and app defaults,
+including Auto-manage, Smart Recovery, Launch at Login, trusted displays and
+CLI fallback availability. The shell `displaydisabler-smart` command is the
+diagnostic surface for installer profile, CLI fallback and LaunchAgent watchdog
+state.
 
 ### CLI safety watchdog
 
@@ -317,7 +340,13 @@ scripts/
 └── lib/displaydisabler_smart_lib.sh
 ```
 
-User-level files created by the smart installer:
+User-level files created by `--app`:
+
+```text
+/Applications/DisplayDisabler.app
+```
+
+Additional user-level files created by `--cli` or `--full`:
 
 ```text
 ~/.displaydisabler-watchdog.conf

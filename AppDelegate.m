@@ -1,7 +1,4 @@
-/*
- * AppDelegate.m — Menu bar application delegate
- * Part of DisplayDisabler v3.0
- */
+
 
 #import "AppDelegate.h"
 #import "DisplayManager.h"
@@ -10,27 +7,17 @@
 #import <ServiceManagement/ServiceManagement.h>
 #import <UserNotifications/UserNotifications.h>
 
-// ── UserDefaults keys ───────────────────────────────────────────────────────
-
 static NSString * const kAutoManage        = @"AutoManageBuiltIn";
 static NSString * const kShowNotifications = @"ShowNotifications";
 static NSString * const kConfirmDisable    = @"ConfirmBeforeDisable";
 static NSString * const kShowResolutions   = @"ShowResolutions";
 
-// Notification identifier used for auto-manage events so consecutive
-// disable/re-enable banners replace each other instead of stacking.
 static NSString * const kAutoManageNotifID = @"auto-manage";
-
-// ── Switch-row layout ───────────────────────────────────────────────────────
 
 static const CGFloat kSwitchRowWidth   = 290;
 static const CGFloat kSwitchRowHeight  = 28;
 static const CGFloat kSwitchRowPad     = 18;
 static const CGFloat kSwitchLabelGap   = 8;
-
-// ── Modes-submenu layout ────────────────────────────────────────────────────
-// Column widths (in chars) tuned for a monospaced font. Covers 8K + 5-digit
-// logical counts, widest label string ("Larger Text"), and 3-digit refresh.
 
 static const NSUInteger kModeColLogical = 17;
 static const NSUInteger kModeColType    = 10;
@@ -42,8 +29,6 @@ static const NSUInteger kModeColType    = 10;
 @end
 
 @implementation AppDelegate
-
-// ── Lifecycle ───────────────────────────────────────────────────────────────
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     (void)notification;
@@ -60,15 +45,6 @@ static const NSUInteger kModeColType    = 10;
     [self.displayManager startMonitoringWithChangeHandler:^{
         __strong __typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
-        // Order matters:
-        //   1. prune first  — clears force state if the target display
-        //      disappeared, so realign's early-return-on-no-force fires
-        //      instead of reconfiguring a ghost ID.
-        //   2. realign next — re-asserts mirror/mode/topology for any
-        //      force that survived the reconfig.
-        //   3. invalidate brightness cache — IOAVService handles may have
-        //      become stale on display change.
-        //   4. rebuild menu last — so it reflects the reconciled state.
         [strongSelf.displayManager pruneStaleVirtualDisplays];
         [strongSelf.displayManager realignForcedDisplay];
         [[Brightness shared] invalidateServiceCache];
@@ -77,8 +53,6 @@ static const NSUInteger kModeColType    = 10;
         [strongSelf performAutoReenableIfNeeded];
     }];
 
-    // Reconfiguration callbacks don't fire on registration, so run once
-    // now to cover the common "launched while already plugged in" case.
     [self performAutoDisableIfNeeded];
 }
 
@@ -96,8 +70,6 @@ static const NSUInteger kModeColType    = 10;
         kShowResolutions:   @YES,
     }];
 }
-
-// ── Notifications ───────────────────────────────────────────────────────────
 
 - (void)userNotificationCenter:(UNUserNotificationCenter *)center
        willPresentNotification:(UNNotification *)notification
@@ -125,8 +97,6 @@ static const NSUInteger kModeColType    = 10;
             addNotificationRequest:request withCompletionHandler:nil];
     };
 
-    // Lazy-request auth on first use so a menu-bar-only app doesn't surface a
-    // permission prompt until it actually has something to say.
     if (self.notificationAuthRequested) {
         deliver();
         return;
@@ -141,8 +111,6 @@ static const NSUInteger kModeColType    = 10;
         if (granted) dispatch_async(dispatch_get_main_queue(), deliver);
     }];
 }
-
-// ── Status item ─────────────────────────────────────────────────────────────
 
 - (void)setupStatusItem {
     self.statusItem = [[NSStatusBar systemStatusBar]
@@ -161,8 +129,6 @@ static const NSUInteger kModeColType    = 10;
     [icon setTemplate:YES];
     self.statusItem.button.image = icon;
 }
-
-// ── Menu building ───────────────────────────────────────────────────────────
 
 - (void)rebuildMenu {
     NSMenu *menu = [[NSMenu alloc] init];
@@ -194,11 +160,6 @@ static const NSUInteger kModeColType    = 10;
 
     NSMenuItem *settingsItem = [[NSMenuItem alloc]
         initWithTitle:@"Settings" action:nil keyEquivalent:@""];
-    // Populate lazily in -menuNeedsUpdate:. Building the custom switch-row
-    // views eagerly here can trip AppKit's layout-recursion warning because
-    // NSSwitch + NSTextField bring autolayout constraints into a menu-item
-    // custom view. Lazy build also makes the settings always reflect current
-    // Launch-at-Login status without us having to watch SMAppService.
     NSMenu *settingsMenu = [[NSMenu alloc] init];
     settingsMenu.autoenablesItems = NO;
     settingsMenu.delegate = self;
@@ -216,8 +177,6 @@ static const NSUInteger kModeColType    = 10;
 
     self.statusItem.menu = menu;
 }
-
-// ── Per-display menu section ────────────────────────────────────────────────
 
 - (void)addDisplaySection:(DDDisplayInfo *)display toMenu:(NSMenu *)menu {
     BOOL forced = [self.displayManager isHiDPIForcedForDisplay:display.displayID];
@@ -248,9 +207,6 @@ static const NSUInteger kModeColType    = 10;
     nameItem.attributedTitle = attrTitle;
     [menu addItem:nameItem];
 
-    // Only surface a state tag when it's non-default — the ● / ○ dot already
-    // communicates active vs disabled. "HiDPI forced" and "disabled" earn
-    // their own text because they're states the user might need to act on.
     NSMutableArray<NSString *> *tags = [NSMutableArray array];
     if (forced)                                 [tags addObject:@"HiDPI forced"];
     else if (!display.isActive)                 [tags addObject:@"disabled"];
@@ -280,10 +236,6 @@ static const NSUInteger kModeColType    = 10;
     }
     [self addLabelToMenu:menu title:resStr];
 
-    // Force HiDPI is offered on every panel when CGVirtualDisplay is available —
-    // including panels that already have native HiDPI (e.g. the MacBook built-in),
-    // because the user may want arbitrary HiDPI logical sizes beyond what macOS
-    // exposes natively.
     BOOL needAllRes = [self pref:kShowResolutions];
     BOOL needForce  = NSClassFromString(@"CGVirtualDisplay") != nil;
 
@@ -314,10 +266,6 @@ static const NSUInteger kModeColType    = 10;
         [menu addItem:brightItem];
     }
 
-    // "Crisp" system-level HiDPI: writes a display override plist that adds
-    // custom resolutions to macOS's own mode list. Requires admin + reboot.
-    // After reboot, these appear as native HiDPI modes in All Resolutions
-    // and in System Settings → Displays.
     BOOL installed = [[HiDPIInjector shared] isInstalledForDisplay:display.displayID];
     [self addActionToMenu:menu
                     title:(installed
@@ -336,9 +284,6 @@ static const NSUInteger kModeColType    = 10;
     NSMenu *submenu = [[NSMenu alloc] init];
     submenu.autoenablesItems = NO;
 
-    // Current-level header, when the display reports a readable brightness
-    // (built-in via DisplayServicesGetBrightness). DDC reads over IOAVService
-    // are fragile so we don't expose them here.
     int cur = [[Brightness shared] brightnessPercentForDisplay:displayID];
     if (cur >= 0) {
         [self addLabelToMenu:submenu
@@ -355,7 +300,6 @@ static const NSUInteger kModeColType    = 10;
         item.target = self;
         item.representedObject = @{ @"displayID": @(displayID),
                                     @"percent":   @(levels[i]) };
-        // Checkmark the level closest to the current reading (within ±5%).
         if (cur >= 0 && abs((int)levels[i] - cur) <= 5) {
             item.state = NSControlStateValueOn;
         }
@@ -374,10 +318,6 @@ static const NSUInteger kModeColType    = 10;
 
     DDDisplayMode *currentlyForced = [self.displayManager forcedTargetForDisplay:displayID];
 
-    // Origin-class is encoded in the option itself: panel-derived rows carry a
-    // real modeRef, synthetic rows carry NULL. Icons reflect that:
-    // "bolt" = a panel mode the force will switch to before mirroring;
-    // "plus.square" = derived-from-physical synthetic, no panel switch.
     NSMenuItem * (^makeRow)(DDDisplayMode *) = ^NSMenuItem *(DDDisplayMode *mode) {
         BOOL isCurrent = (currentlyForced &&
                           currentlyForced.pixelWidth  == mode.pixelWidth &&
@@ -439,8 +379,6 @@ static const NSUInteger kModeColType    = 10;
     [self addActionToMenu:menu title:@"Enable"
                    action:@selector(enableDisplay:) displayID:display.displayID];
 }
-
-// ── Settings submenu (lazy) ─────────────────────────────────────────────────
 
 - (void)menuNeedsUpdate:(NSMenu *)menu {
     [menu removeAllItems];
@@ -511,10 +449,6 @@ static const NSUInteger kModeColType    = 10;
     sw.accessibilityLabel = title;
     [row addSubview:sw];
 
-    // `labelWithString:` returns a label with auto-layout enabled, which
-    // triggers recursive layout when AppKit lays out our custom menu-item
-    // view. Pin it to manual frame layout and preset its preferred wrap
-    // width so the intrinsic-size calc doesn't re-enter.
     NSTextField *label = [NSTextField labelWithString:title];
     label.translatesAutoresizingMaskIntoConstraints = YES;
     label.font = font;
@@ -529,8 +463,6 @@ static const NSUInteger kModeColType    = 10;
     item.view = row;
     return item;
 }
-
-// ── Modes submenu ───────────────────────────────────────────────────────────
 
 - (NSMenu *)buildModesSubmenuForDisplay:(CGDirectDisplayID)displayID
                                   modes:(NSArray<DDDisplayMode *> *)modes {
@@ -582,8 +514,6 @@ static const NSUInteger kModeColType    = 10;
             initWithString:line
                 attributes:@{NSFontAttributeName: mode.isCurrent ? monoBold : mono}];
         if (mode.isCurrent) item.state = NSControlStateValueOn;
-        // Panel-native mode: star icon in the menu's image slot (decoupled
-        // from the title text so monospace alignment stays clean).
         if (mode.isDefaultForDisplay) {
             item.image = [NSImage imageWithSystemSymbolName:@"star.fill"
                                    accessibilityDescription:@"panel-native"];
@@ -602,8 +532,6 @@ static const NSUInteger kModeColType    = 10;
 
     return submenu;
 }
-
-// ── Menu helpers ────────────────────────────────────────────────────────────
 
 - (void)addLabelToMenu:(NSMenu *)menu title:(NSString *)title {
     NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title
@@ -626,8 +554,6 @@ static const NSUInteger kModeColType    = 10;
     [menu addItem:item];
 }
 
-// ── Preference helpers ──────────────────────────────────────────────────────
-
 - (BOOL)pref:(NSString *)key {
     return [[NSUserDefaults standardUserDefaults] boolForKey:key];
 }
@@ -636,8 +562,6 @@ static const NSUInteger kModeColType    = 10;
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     [defaults setBool:![defaults boolForKey:key] forKey:key];
 }
-
-// ── Display actions ─────────────────────────────────────────────────────────
 
 - (void)switchMode:(NSMenuItem *)sender {
     NSDictionary *info = sender.representedObject;
@@ -664,7 +588,6 @@ static const NSUInteger kModeColType    = 10;
     CGDirectDisplayID did = [sender.representedObject unsignedIntValue];
     NSString *name = [self.displayManager nameForDisplayID:did];
 
-    // Refuse to disable the last active display — prevents an unrecoverable black screen.
     NSUInteger activeCount = 0;
     for (DDDisplayInfo *d in [self.displayManager allDisplays]) {
         if (d.isActive) activeCount++;
@@ -799,7 +722,6 @@ static const NSUInteger kModeColType    = 10;
         if (!strongSelf) return;
         if (!ok) {
             NSLog(@"DisplayDisabler: HiDPI install failed: %@", err);
-            // -128 = user cancelled auth dialog — quiet path, no notification.
             if (err.code != -128) {
                 [strongSelf postNotification:@"Install Failed"
                                         body:err.localizedDescription];
@@ -857,15 +779,12 @@ static const NSUInteger kModeColType    = 10;
     [alert addButtonWithTitle:@"Later"];
     if ([alert runModal] != NSAlertFirstButtonReturn) return;
 
-    // Trigger the standard macOS restart via AppleScript (no admin needed).
     NSAppleScript *as = [[NSAppleScript alloc] initWithSource:
         @"tell application \"System Events\" to restart"];
     NSDictionary *asErr = nil;
     [as executeAndReturnError:&asErr];
     if (asErr) NSLog(@"DisplayDisabler: restart script error: %@", asErr);
 }
-
-// ── Settings actions ────────────────────────────────────────────────────────
 
 - (void)switchToggled:(NSSwitch *)sender {
     NSString *key = sender.identifier;
@@ -901,11 +820,8 @@ static const NSUInteger kModeColType    = 10;
     NSString *key = sender.representedObject;
     [self flipPref:key];
     sender.state = [self pref:key] ? NSControlStateValueOn : NSControlStateValueOff;
-    // kShowResolutions changes the menu's structure, not just a checkmark state.
     if ([key isEqualToString:kShowResolutions]) [self rebuildMenu];
 }
-
-// ── Confirmation dialog ─────────────────────────────────────────────────────
 
 - (BOOL)confirmDestructive:(NSString *)message
                       info:(NSString *)info
@@ -921,8 +837,6 @@ static const NSUInteger kModeColType    = 10;
 
     return [alert runModal] == NSAlertFirstButtonReturn;
 }
-
-// ── Auto-manage logic ───────────────────────────────────────────────────────
 
 - (void)performAutoDisableIfNeeded {
     if (![self pref:kAutoManage]) return;

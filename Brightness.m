@@ -1,28 +1,9 @@
-/*
- * Brightness.m — Unified brightness for built-in and external displays.
- *
- * External path (DDC/CI over IOAVService):
- *   Packet layout (VCP "Set Feature" 0x03):
- *     byte 0: 0x80 | length    — 0x84 for a 4-byte payload
- *     byte 1: 0x03             — VCP "Set Feature Request"
- *     byte 2: vcp code         — 0x10 = brightness
- *     byte 3: value hi byte
- *     byte 4: value lo byte
- *     byte 5: checksum         — XOR of 0x6E, source addr, bytes 0..4
- *   Derived from the m1ddc reverse-engineering work (MIT licensed).
- *
- * Internal path (DisplayServices private framework):
- *   DisplayServicesSetBrightness(displayID, 0.0..1.0) → int (0 = success).
- *   Resolved at runtime with dlsym so a missing framework degrades gracefully.
- */
+
 
 #import "Brightness.h"
 #import <IOKit/IOKitLib.h>
 #include <dlfcn.h>
 
-// ── Private APIs ───────────────────────────────────────────────────────────
-
-// CoreGraphics IOAVService (linked via -framework CoreDisplay).
 typedef CFTypeRef IOAVServiceRef;
 
 extern IOAVServiceRef IOAVServiceCreateWithService(CFAllocatorRef allocator,
@@ -34,22 +15,13 @@ extern IOReturn IOAVServiceWriteI2C(IOAVServiceRef service,
                                     void *inputBuffer,
                                     uint32_t inputBufferSize);
 
-// CoreDisplay private: display info dictionary including IODisplayLocation.
 extern CFDictionaryRef CoreDisplay_DisplayCreateInfoDictionary(CGDirectDisplayID display)
     CF_RETURNS_RETAINED;
 
-// DisplayServices private: built-in-panel brightness control. Looked up
-// dynamically so we don't hard-link a private framework.
 typedef int (*DSSetFn)(CGDirectDisplayID, float);
 typedef int (*DSGetFn)(CGDirectDisplayID, float *);
 typedef int (*DSCanChangeFn)(CGDirectDisplayID);
 
-// Resolves the whole DisplayServices brightness surface in one dispatch_once
-// so the dlopen + dlsym cost is paid at most once per process. The smooth
-// variant is preferred for -set because it reproduces the fade animation
-// Apple's F1/F2 keys drive (instant SetBrightness is visually jarring at
-// large deltas). If SetBrightnessSmooth is missing on some future macOS,
-// we gracefully fall back to SetBrightness.
 typedef struct {
     DSSetFn         set;
     DSSetFn         setSmooth;
@@ -73,14 +45,12 @@ static DSBrightnessFns dsBrightness(void) {
     return f;
 }
 
-// ── Error domain + DDC constants ───────────────────────────────────────────
-
 static NSErrorDomain const kBrightnessErrorDomain = @"com.local.DisplayDisabler.Brightness";
 
-static const uint8_t kDDCChipAddress   = 0x37;  // standard DDC device address
-static const uint8_t kDDCSourceAddress = 0x51;  // host input address
-static const uint8_t kDDCVCPBrightness = 0x10;  // VESA VCP: brightness
-static const useconds_t kDDCSettleUs   = 10000; // 10ms, m1ddc-tuned
+static const uint8_t kDDCChipAddress   = 0x37;
+static const uint8_t kDDCSourceAddress = 0x51;
+static const uint8_t kDDCVCPBrightness = 0x10;
+static const useconds_t kDDCSettleUs   = 10000;
 static const int kDDCAttempts          = 2;
 
 static NSError *brightnessError(NSInteger code, NSString *message) {
@@ -88,10 +58,7 @@ static NSError *brightnessError(NSInteger code, NSString *message) {
                            userInfo:@{NSLocalizedDescriptionKey: message}];
 }
 
-// ── Implementation ─────────────────────────────────────────────────────────
-
 @interface Brightness ()
-// Lazily-resolved IOAVService per external display. Not used for built-in.
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, id> *services;
 @end
 
@@ -110,11 +77,6 @@ static NSError *brightnessError(NSInteger code, NSString *message) {
     return self;
 }
 
-// ── External: IOAVService discovery ─────────────────────────────────────────
-
-// Resolve the display's IODisplayLocation and scan IORegistry for the
-// DCPAVServiceProxy sibling whose path starts with that location. Returns a
-// retained IOAVServiceRef that callers hand to the services dict for caching.
 - (IOAVServiceRef)resolveAVServiceFor:(CGDirectDisplayID)displayID CF_RETURNS_RETAINED {
     CFDictionaryRef info = CoreDisplay_DisplayCreateInfoDictionary(displayID);
     if (!info) return NULL;
@@ -210,8 +172,6 @@ static NSError *brightnessError(NSInteger code, NSString *message) {
     return NO;
 }
 
-// ── Built-in: DisplayServices ───────────────────────────────────────────────
-
 - (BOOL)setBrightnessViaDisplayServices:(uint8_t)percent
                              forDisplay:(CGDirectDisplayID)displayID
                                   error:(NSError **)error {
@@ -232,15 +192,10 @@ static NSError *brightnessError(NSInteger code, NSString *message) {
     return YES;
 }
 
-// ── Public API ──────────────────────────────────────────────────────────────
-
 - (BOOL)supportsBrightness:(CGDirectDisplayID)displayID {
     if (CGDisplayIsBuiltin(displayID)) {
         DSBrightnessFns f = dsBrightness();
         if (!f.set && !f.setSmooth) return NO;
-        // CanChangeBrightness is the authoritative capability check; some
-        // panels (e.g. external Apple-branded displays) advertise
-        // DisplayServices but refuse writes.
         return f.canChange ? (f.canChange(displayID) != 0) : YES;
     }
     return [self serviceFor:displayID] != NULL;

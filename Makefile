@@ -1,7 +1,3 @@
-# Makefile for DisplayDisabler.app
-# Build:   make
-# Clean:   make clean
-# Install: make install (copies to /Applications)
 
 APP_NAME   = DisplayDisabler
 BUNDLE     = $(APP_NAME).app
@@ -29,9 +25,6 @@ all: bundle sign
 $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(CFLAGS) $(FRAMEWORKS) $(OBJECTS) -o $@
 
-# Render AppIcon.icns from the "display" SF Symbol on a dark rounded-rect
-# background. One-shot build-time helper; the .icns is committed to the
-# repo so CI / downstream builders don't need to re-run it.
 AppIcon.icns: build_icon.m
 	@$(CC) -fobjc-arc -O0 -mmacosx-version-min=14.0 -framework Cocoa \
 	    build_icon.m -o /tmp/dd-build-icon

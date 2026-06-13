@@ -1,48 +1,12 @@
-/*
- * HiDPIInjector.m — writes a /Library-level Display override that adds custom
- * HiDPI modes to macOS's native mode list. Reverse-engineered against Apple's
- * own /System/Library/Displays/Contents/Resources/Overrides plists, which
- * remain the gold standard for correct format.
- *
- * scale-resolutions entry format (per Apple's M3 Air built-in override at
- * /System/Library/Displays/Contents/Resources/Overrides/DisplayVendorID-610/
- * DisplayProductID-a052):
- *
- *   8-byte entry — FULL-PANEL aspect, the standard HiDPI scaled mode:
- *     [0..3] pixel width  × 2  (big-endian uint32 — HiDPI backing)
- *     [4..7] pixel height × 2  (big-endian uint32)
- *
- *   12-byte entry — BELOW-NOTCH aspect, the "Scale to fit below built-in
- *   camera" variant on notched MacBooks:
- *     [0..3]  pixel width  × 2  (big-endian uint32)
- *     [4..7]  pixel height × 2  (big-endian uint32)
- *     [8..11] flag = 1          (big-endian uint32)
- *
- * An older "one-key-hidpi" format used 9 bytes with a single-byte 0x00 flag —
- * that format did NOT match Apple's actual file layout on macOS 26 and likely
- * produced silently-discarded entries.
- *
- * We ALSO preserve Apple's own scale-resolutions entries by reading the
- * /System plist (which macOS ships per-panel) and merging its entries into
- * our /Library override. Without this merge, installing our plist would
- * wipe all of Apple's curated scaled modes (e.g. the 3420×2224, 2940×1912,
- * 2048×1332 entries for the M3 Air), since /Library shadows /System at the
- * windowserver lookup layer.
- */
+
 
 #import "HiDPIInjector.h"
 #import "DisplayManager.h"
 #import <AppKit/AppKit.h>
 #import <IOKit/IOKitLib.h>
-#include <arpa/inet.h>  // htonl
+#include <arpa/inet.h>
 #include <math.h>
 
-// HiDPI logical scales applied to the panel's FULL native pixel grid. Each
-// produces a mode whose pixel backing is 2× the logical size (standard
-// retina-style HiDPI). 1.0 = "looks like the panel's native pixel count"
-// (supersampled Retina) — this is the mode Apple ships in System Settings'
-// default list for the M3 Air as "Looks like 2560×1664 Retina" only when
-// their own plist includes it. Our full-panel list adds it back if absent.
 static const double kInjectorFullPanelScales[] = { 0.625, 0.75, 0.875, 1.0, 1.125, 1.25, 1.5 };
 static const size_t kInjectorFullPanelScaleCount =
     sizeof(kInjectorFullPanelScales) / sizeof(*kInjectorFullPanelScales);
@@ -61,9 +25,6 @@ static NSError *injectorError(NSInteger code, NSString *message) {
                            userInfo:@{NSLocalizedDescriptionKey: message}];
 }
 
-// ── Apple-format scale-resolutions entry encoders ───────────────────────────
-
-// 8-byte entry: full-panel aspect HiDPI mode.
 static NSData *entry8(NSUInteger logicalW, NSUInteger logicalH) {
     uint8_t bytes[8] = {0};
     uint32_t W = htonl((uint32_t)(logicalW * 2));
@@ -73,7 +34,6 @@ static NSData *entry8(NSUInteger logicalW, NSUInteger logicalH) {
     return [NSData dataWithBytes:bytes length:sizeof bytes];
 }
 
-// 12-byte entry: below-notch aspect variant (flag = 1).
 __unused static NSData *entry12BelowNotch(NSUInteger logicalW, NSUInteger logicalH) {
     uint8_t bytes[12] = {0};
     uint32_t W = htonl((uint32_t)(logicalW * 2));
@@ -94,12 +54,6 @@ __unused static NSData *entry12BelowNotch(NSUInteger logicalW, NSUInteger logica
     return instance;
 }
 
-// Returns full-panel HiDPI logical sizes derived from the panel's NATIVE
-// pixel grid (including the notch-side strip area on notched panels — the
-// strip is menu-bar space in panel-native rendering, not dead). Deliberately
-// uses nativePanelPixelsForDisplay: rather than the mirror-usable
-// physicalPixelsForDisplay: because Crisp HiDPI runs through the OS's own
-// rendering path that handles notch geometry correctly.
 - (NSArray<NSValue *> *)defaultResolutionsForDisplay:(CGDirectDisplayID)displayID {
     CGSize panel = [[DisplayManager shared] nativePanelPixelsForDisplay:displayID];
     if (panel.width <= 0 || panel.height <= 0) return @[];
@@ -107,7 +61,6 @@ __unused static NSData *entry12BelowNotch(NSUInteger logicalW, NSUInteger logica
     NSMutableArray<NSValue *> *out = [NSMutableArray arrayWithCapacity:kInjectorFullPanelScaleCount];
     NSMutableSet<NSString *> *seen = [NSMutableSet set];
     for (size_t i = 0; i < kInjectorFullPanelScaleCount; i++) {
-        // Even-integer sizes keep the 2× pixel backing integer-clean.
         size_t lw = (size_t)round(panel.width  * kInjectorFullPanelScales[i] / 2.0) * 2;
         size_t lh = (size_t)round(panel.height * kInjectorFullPanelScales[i] / 2.0) * 2;
         if (lw == 0 || lh == 0) continue;
@@ -119,16 +72,6 @@ __unused static NSData *entry12BelowNotch(NSUInteger logicalW, NSUInteger logica
     return out;
 }
 
-// Windowserver looks up override plists by CoreGraphics' vendor/product IDs.
-// Verified empirically against Apple's shipped overrides: e.g. the M3 Air
-// built-in panel has CGDisplayModelNumber == 0xa052 and Apple ships
-// /System/Library/Displays/…/DisplayVendorID-610/DisplayProductID-a052.
-// Earlier versions of this code pulled ProductID from AppleCLCD2's
-// DisplayAttributes.ProductAttributes dict and truncated a 64-bit ASCII
-// panel codename (e.g. "014A\0"/0x3031344101) to SInt32 = 0x30313441,
-// producing a garbage override path that never matched Apple's naming and
-// made loadSystemOverrideForDisplay: silently fail. CG's values are the
-// single source of truth.
 - (void)productAttributesForDisplay:(CGDirectDisplayID)displayID
                              vendor:(uint32_t *)outVendor
                             product:(uint32_t *)outProduct {
@@ -136,7 +79,6 @@ __unused static NSData *entry12BelowNotch(NSUInteger logicalW, NSUInteger logica
     *outProduct = CGDisplayModelNumber(displayID);
 }
 
-// Build the /Library override path using the resolved vendor/product IDs.
 - (NSString *)overridePathForDisplay:(CGDirectDisplayID)displayID {
     uint32_t vendor = 0, product = 0;
     [self productAttributesForDisplay:displayID vendor:&vendor product:&product];
@@ -144,7 +86,6 @@ __unused static NSData *entry12BelowNotch(NSUInteger logicalW, NSUInteger logica
             kOverridesLibraryRoot, vendor, product];
 }
 
-// Parallel path under /System — Apple's factory-shipped override.
 - (NSString *)systemOverridePathForDisplay:(CGDirectDisplayID)displayID {
     uint32_t vendor = 0, product = 0;
     [self productAttributesForDisplay:displayID vendor:&vendor product:&product];
@@ -157,11 +98,6 @@ __unused static NSData *entry12BelowNotch(NSUInteger logicalW, NSUInteger logica
             [self overridePathForDisplay:displayID]];
 }
 
-// Load Apple's /System override plist for this panel if one exists. Returns
-// nil for displays Apple doesn't ship an override for (most non-Apple
-// externals). The returned dictionary is the starting point for our merge —
-// we keep its DisplayProductName, IOGFlags, target-default-ppmm, and
-// existing scale-resolutions entries intact, then append our own.
 - (nullable NSDictionary *)loadSystemOverrideForDisplay:(CGDirectDisplayID)displayID {
     NSString *path = [self systemOverridePathForDisplay:displayID];
     if (![[NSFileManager defaultManager] fileExistsAtPath:path]) return nil;
@@ -176,9 +112,6 @@ __unused static NSData *entry12BelowNotch(NSUInteger logicalW, NSUInteger logica
     return obj;
 }
 
-// Generate the full merged plist: Apple's /System fields (if any) + our own
-// scale-resolutions entries appended. Returns a CFData-ready NSDictionary
-// that we later serialize to XML for the shell-script heredoc.
 - (NSDictionary *)mergedPlistDictForDisplay:(CGDirectDisplayID)displayID
                                 resolutions:(NSArray<NSValue *> *)sizes {
     uint32_t vendor = 0, product = 0;
@@ -187,18 +120,11 @@ __unused static NSData *entry12BelowNotch(NSUInteger logicalW, NSUInteger logica
     NSDictionary *apple = [self loadSystemOverrideForDisplay:displayID];
     NSMutableDictionary *out = [NSMutableDictionary dictionary];
 
-    // Carry forward every key Apple set, so we shadow their plist without
-    // losing fields the windowserver may depend on (IOGFlags, product name,
-    // target-default-ppmm, display-product-string, icons, etc.).
     if (apple) [out addEntriesFromDictionary:apple];
 
-    // Mandatory identifiers.
     out[@"DisplayVendorID"]  = @(vendor);
     out[@"DisplayProductID"] = @(product);
 
-    // Existing scale-resolutions (Apple's curated entries) go first; our
-    // appended entries come after. Dedup by the raw NSData value so a
-    // size Apple already has doesn't get a duplicate entry from us.
     NSMutableArray *entries = [NSMutableArray array];
     NSMutableSet<NSData *> *seen = [NSMutableSet set];
     NSArray *existing = apple[@"scale-resolutions"];
@@ -236,7 +162,6 @@ __unused static NSData *entry12BelowNotch(NSUInteger logicalW, NSUInteger logica
     return [[NSString alloc] initWithData:xml encoding:NSUTF8StringEncoding];
 }
 
-// Escape a string for safe embedding in a double-quoted AppleScript literal.
 static NSString *escapeForAppleScript(NSString *s) {
     NSString *out = [s stringByReplacingOccurrencesOfString:@"\\" withString:@"\\\\"];
     out = [out stringByReplacingOccurrencesOfString:@"\"" withString:@"\\\""];
@@ -279,8 +204,6 @@ static NSString *escapeForAppleScript(NSString *s) {
     NSString *dir  = [path stringByDeletingLastPathComponent];
     NSString *xml  = [self plistXMLForDisplay:displayID resolutions:sizes];
 
-    // Heredoc terminator that cannot collide with any XML content. Single-
-    // quoted ('CRISP_EOF') prevents bash from interpolating anything inside.
     NSString *script = [NSString stringWithFormat:
         @"/bin/mkdir -p %@ && "
         @"/usr/bin/tee %@ > /dev/null <<'CRISP_EOF'\n"
@@ -310,9 +233,6 @@ static NSString *escapeForAppleScript(NSString *s) {
     NSString *path = [self overridePathForDisplay:displayID];
     NSString *dir  = [path stringByDeletingLastPathComponent];
 
-    // Only remove the per-display directory; Apple's /System entry remains
-    // in effect. DisplayResolutionEnabled stays flipped — it's a no-op once
-    // our overrides are gone and other tools might rely on it.
     NSString *script = [NSString stringWithFormat:@"/bin/rm -rf %@", dir];
     [self runPrivilegedShell:script completion:completion];
 }

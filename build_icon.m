@@ -1,7 +1,4 @@
-/*
- * build_icon.m — generate AppIcon.iconset from the "display" SF Symbol.
- * Not shipped. Invoked by `make icon` → iconutil → AppIcon.icns.
- */
+
 
 #import <AppKit/AppKit.h>
 
@@ -9,14 +6,12 @@ static void renderAtSize(CGFloat size, NSString *path) {
     NSImage *out = [[NSImage alloc] initWithSize:NSMakeSize(size, size)];
     [out lockFocus];
 
-    // Rounded-rect background — macOS app-icon corner radius ≈ 22%.
     CGFloat radius = size * 0.2237;
     NSBezierPath *bg = [NSBezierPath bezierPathWithRoundedRect:NSMakeRect(0, 0, size, size)
                                                        xRadius:radius yRadius:radius];
     [[NSColor colorWithRed:0.125 green:0.133 blue:0.157 alpha:1.0] setFill];
     [bg fill];
 
-    // Monochrome display glyph tinted white, ~55% of icon size.
     NSImage *symbol = [NSImage imageWithSystemSymbolName:@"display" accessibilityDescription:nil];
     CGFloat pt = size * 0.55;
     NSImageSymbolConfiguration *config = [[NSImageSymbolConfiguration
@@ -52,7 +47,6 @@ int main(int argc, const char *argv[]) {
             return 1;
         }
 
-        // Sizes iconutil expects for a complete .icns.
         struct { CGFloat px; const char *name; } sizes[] = {
             {  16, "icon_16x16.png"     },
             {  32, "icon_16x16@2x.png"  },

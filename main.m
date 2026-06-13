@@ -1,7 +1,4 @@
-/*
- * main.m — Application entry point
- * Part of DisplayDisabler v3.0
- */
+
 
 #import <Cocoa/Cocoa.h>
 #import "AppDelegate.h"

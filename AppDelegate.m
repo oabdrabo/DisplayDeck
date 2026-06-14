@@ -5,6 +5,7 @@
 #import "WindowTransparency.h"
 #import <ServiceManagement/ServiceManagement.h>
 #import <UserNotifications/UserNotifications.h>
+#import <objc/runtime.h>
 
 static NSString * const kAutoManage        = @"AutoManageBuiltIn";
 static NSString * const kShowNotifications = @"ShowNotifications";
@@ -21,7 +22,8 @@ static const CGFloat kSwitchLabelGap   = 8;
 static const NSUInteger kModeColLogical = 17;
 static const NSUInteger kModeColType    = 10;
 
-static const int kTransparencyLevels[] = {100, 90, 75, 50, 25};
+static const CGFloat kSliderRowWidth = 300;
+static const void *kDDPctLabelKey = &kDDPctLabelKey;
 
 static NSString *ddPad(NSString *s, NSUInteger length) {
     return [s stringByPaddingToLength:length withString:@" " startingAtIndex:0];
@@ -160,25 +162,15 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     }
     [self updateStatusIcon:anyDisabled];
 
-    NSMenu *displaysSub = [[NSMenu alloc] init];
-    displaysSub.autoenablesItems = NO;
+    [menu addItem:[NSMenuItem sectionHeaderWithTitle:
+        [NSString stringWithFormat:@"Displays — %lu of %lu active",
+         (unsigned long)activeCount, (unsigned long)displays.count]]];
     for (DDDisplayInfo *display in displays) {
-        [self addDisplayRow:display toMenu:displaysSub];
+        [self addDisplayRow:display toMenu:menu];
     }
-    NSMenuItem *displaysItem = [[NSMenuItem alloc]
-        initWithTitle:[NSString stringWithFormat:@"Displays  (%lu of %lu active)",
-                       (unsigned long)activeCount, (unsigned long)displays.count]
-               action:nil keyEquivalent:@""];
-    displaysItem.submenu = displaysSub;
-    [menu addItem:displaysItem];
 
-    NSMenu *transparencySub = [[NSMenu alloc] init];
-    transparencySub.autoenablesItems = NO;
-    [self addTransparencySectionToMenu:transparencySub];
-    NSMenuItem *transparencyItem = [[NSMenuItem alloc]
-        initWithTitle:@"Transparency" action:nil keyEquivalent:@""];
-    transparencyItem.submenu = transparencySub;
-    [menu addItem:transparencyItem];
+    [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Transparency"]];
+    [self addTransparencySectionToMenu:menu];
 
     [menu addItem:[NSMenuItem separatorItem]];
 
@@ -264,10 +256,10 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     }
     if ([[Brightness shared] supportsBrightness:display.displayID]) {
         int b = [[Brightness shared] brightnessPercentForDisplay:display.displayID];
-        NSString *bt = b >= 0 ? [NSString stringWithFormat:@"Brightness   %d%%", b] : @"Brightness";
-        NSMenuItem *br = [[NSMenuItem alloc] initWithTitle:bt action:nil keyEquivalent:@""];
-        br.submenu = [self buildBrightnessSubmenuForDisplay:display.displayID];
-        [m addItem:br];
+        if (b < 0) b = 100;
+        [m addItem:[self sliderRowWithLabel:@"Brightness" percent:b minPct:10
+                                 continuous:NO tag:display.displayID
+                                     action:@selector(brightnessSliderChanged:)]];
     }
 
     BOOL installed = [[HiDPIInjector shared] isInstalledForDisplay:display.displayID];
@@ -281,34 +273,6 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     [m addItem:[self actionItem:@"Disable"
                          action:@selector(disableDisplay:) displayID:display.displayID]];
     return m;
-}
-
-- (NSMenu *)buildBrightnessSubmenuForDisplay:(CGDirectDisplayID)displayID {
-    NSMenu *submenu = [[NSMenu alloc] init];
-    submenu.autoenablesItems = NO;
-
-    int cur = [[Brightness shared] brightnessPercentForDisplay:displayID];
-    if (cur >= 0) {
-        [self addLabelToMenu:submenu
-                       title:[NSString stringWithFormat:@"Currently %d%%", cur]];
-        [submenu addItem:[NSMenuItem separatorItem]];
-    }
-
-    static const uint8_t levels[] = {10, 25, 50, 75, 100};
-    for (size_t i = 0; i < sizeof levels / sizeof *levels; i++) {
-        NSMenuItem *item = [[NSMenuItem alloc]
-            initWithTitle:[NSString stringWithFormat:@"%u%%", levels[i]]
-                   action:@selector(setBrightness:)
-            keyEquivalent:@""];
-        item.target = self;
-        item.representedObject = @{ @"displayID": @(displayID),
-                                    @"percent":   @(levels[i]) };
-        if (cur >= 0 && abs((int)levels[i] - cur) <= 5) {
-            item.state = NSControlStateValueOn;
-        }
-        [submenu addItem:item];
-    }
-    return submenu;
 }
 
 - (NSMenu *)buildForceHiDPISubmenuForDisplay:(CGDirectDisplayID)displayID
@@ -390,23 +354,15 @@ static NSString *ddLogicalString(size_t w, size_t h) {
             int p = (int)lroundf(w.alpha * 100.0f);
             if (p < pct) pct = p;
         }
-        NSString *suffix = app.windows.count > 1
-            ? [NSString stringWithFormat:@"   (%lu win)", (unsigned long)app.windows.count]
-            : @"";
-        NSMenuItem *row = [[NSMenuItem alloc]
-            initWithTitle:[NSString stringWithFormat:@"%@   %d%%%@", app.name, pct, suffix]
-                   action:nil keyEquivalent:@""];
-        row.submenu = [self transparencyLevelsMenuForPID:app.pid allWindows:NO current:pct];
-        [menu addItem:row];
+        [menu addItem:[self sliderRowWithLabel:app.name percent:pct minPct:20
+                                    continuous:YES tag:app.pid
+                                        action:@selector(opacitySliderChanged:)]];
     }
 
     [menu addItem:[NSMenuItem separatorItem]];
-
-    NSMenuItem *all = [[NSMenuItem alloc]
-        initWithTitle:@"All windows…" action:nil keyEquivalent:@""];
-    all.submenu = [self transparencyLevelsMenuForPID:0 allWindows:YES current:-1];
-    [menu addItem:all];
-
+    [menu addItem:[self sliderRowWithLabel:@"All apps" percent:100 minPct:20
+                                continuous:YES tag:0
+                                    action:@selector(opacitySliderChanged:)]];
     NSMenuItem *reset = [[NSMenuItem alloc]
         initWithTitle:@"Reset all (100%)"
                action:@selector(resetAllTransparency:) keyEquivalent:@""];
@@ -414,38 +370,65 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     [menu addItem:reset];
 }
 
-- (NSMenu *)transparencyLevelsMenuForPID:(pid_t)pid
-                              allWindows:(BOOL)allWindows
-                                 current:(int)current {
-    NSMenu *m = [[NSMenu alloc] init];
-    m.autoenablesItems = NO;
-    for (size_t i = 0; i < sizeof kTransparencyLevels / sizeof *kTransparencyLevels; i++) {
-        int pct = kTransparencyLevels[i];
-        NSMenuItem *item = [[NSMenuItem alloc]
-            initWithTitle:[NSString stringWithFormat:@"%d%%", pct]
-                   action:@selector(applyTransparency:) keyEquivalent:@""];
-        item.target = self;
-        if (!allWindows && abs(pct - current) <= 2) item.state = NSControlStateValueOn;
-        item.representedObject = @{ @"pct": @(pct),
-                                    @"pid": @(pid),
-                                    @"all": @(allWindows) };
-        [m addItem:item];
-    }
-    return m;
+- (NSMenuItem *)sliderRowWithLabel:(NSString *)label
+                           percent:(int)pct
+                            minPct:(int)minPct
+                        continuous:(BOOL)continuous
+                               tag:(NSInteger)tag
+                            action:(SEL)action {
+    NSView *row = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, kSliderRowWidth, 24)];
+
+    NSTextField *name = [NSTextField labelWithString:label];
+    name.font = [NSFont menuFontOfSize:13];
+    name.lineBreakMode = NSLineBreakByTruncatingTail;
+    name.frame = NSMakeRect(14, 4, 92, 16);
+    [row addSubview:name];
+
+    NSTextField *value = [NSTextField labelWithString:[NSString stringWithFormat:@"%d%%", pct]];
+    value.font = [NSFont monospacedDigitSystemFontOfSize:12 weight:NSFontWeightRegular];
+    value.textColor = [NSColor secondaryLabelColor];
+    value.alignment = NSTextAlignmentRight;
+    value.frame = NSMakeRect(kSliderRowWidth - 50, 4, 36, 16);
+    [row addSubview:value];
+
+    NSSlider *slider = [NSSlider sliderWithValue:pct / 100.0
+                                        minValue:minPct / 100.0
+                                        maxValue:1.0
+                                          target:self
+                                          action:action];
+    slider.continuous = continuous;
+    slider.controlSize = NSControlSizeSmall;
+    slider.tag = tag;
+    slider.frame = NSMakeRect(112, 2, kSliderRowWidth - 112 - 54, 20);
+    objc_setAssociatedObject(slider, kDDPctLabelKey, value, OBJC_ASSOCIATION_ASSIGN);
+    [row addSubview:slider];
+
+    NSMenuItem *item = [[NSMenuItem alloc] init];
+    item.view = row;
+    return item;
 }
 
-- (void)applyTransparency:(NSMenuItem *)sender {
-    NSDictionary *info = sender.representedObject;
-    float alpha = [info[@"pct"] intValue] / 100.0f;
+- (void)syncSliderLabel:(NSSlider *)slider {
+    NSTextField *value = objc_getAssociatedObject(slider, kDDPctLabelKey);
+    value.stringValue = [NSString stringWithFormat:@"%d%%", (int)lround(slider.doubleValue * 100)];
+}
+
+- (void)opacitySliderChanged:(NSSlider *)sender {
+    [self syncSliderLabel:sender];
+    pid_t pid = (pid_t)sender.tag;
     NSError *error = nil;
-    BOOL ok = [info[@"all"] boolValue]
-        ? [[WindowTransparency shared] setAlphaForAllWindows:alpha error:&error]
-        : [[WindowTransparency shared] setAlpha:alpha forApp:[info[@"pid"] intValue] error:&error];
-    if (!ok) {
-        NSLog(@"DisplayDisabler: transparency failed: %@", error);
-        [self postNotification:@"Transparency Failed" body:error.localizedDescription];
+    if (pid == 0) [[WindowTransparency shared] setAlphaForAllWindows:sender.floatValue error:&error];
+    else          [[WindowTransparency shared] setAlpha:sender.floatValue forApp:pid error:&error];
+    if (error) NSLog(@"DisplayDisabler: transparency failed: %@", error);
+}
+
+- (void)brightnessSliderChanged:(NSSlider *)sender {
+    [self syncSliderLabel:sender];
+    NSError *error = nil;
+    if (![[Brightness shared] setBrightnessPercent:(uint8_t)lround(sender.doubleValue * 100)
+                                        forDisplay:(CGDirectDisplayID)sender.tag error:&error]) {
+        NSLog(@"DisplayDisabler: brightness failed: %@", error);
     }
-    [self rebuildMenu];
 }
 
 - (void)resetAllTransparency:(NSMenuItem *)sender {
@@ -716,23 +699,6 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         [self rebuildMenu];
     } else {
         NSLog(@"DisplayDisabler: Failed to stop forced HiDPI for 0x%X: %@", did, error);
-    }
-}
-
-- (void)setBrightness:(NSMenuItem *)sender {
-    NSDictionary *info = sender.representedObject;
-    CGDirectDisplayID did = [info[@"displayID"] unsignedIntValue];
-    uint8_t pct = (uint8_t)[info[@"percent"] unsignedCharValue];
-    NSString *name = [self.displayManager nameForDisplayID:did];
-
-    NSError *error = nil;
-    if ([[Brightness shared] setBrightnessPercent:pct forDisplay:did error:&error]) {
-        [self postNotification:@"Brightness"
-                          body:[NSString stringWithFormat:@"%@ set to %u%%.", name, pct]];
-    } else {
-        NSLog(@"DisplayDisabler: Failed to set brightness on 0x%X: %@", did, error);
-        [self postNotification:@"Brightness Failed"
-                          body:error.localizedDescription];
     }
 }
 

@@ -1,4 +1,5 @@
 #import "Brightness.h"
+#import "DDUtil.h"
 #import <IOKit/IOKitLib.h>
 #include <dlfcn.h>
 
@@ -50,11 +51,6 @@ static const uint8_t kDDCSourceAddress = 0x51;
 static const uint8_t kDDCVCPBrightness = 0x10;
 static const useconds_t kDDCSettleUs   = 10000;
 static const int kDDCAttempts          = 2;
-
-static NSError *brightnessError(NSInteger code, NSString *message) {
-    return [NSError errorWithDomain:kBrightnessErrorDomain code:code
-                           userInfo:@{NSLocalizedDescriptionKey: message}];
-}
 
 @interface Brightness ()
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, id> *services;
@@ -143,7 +139,7 @@ static NSError *brightnessError(NSInteger code, NSString *message) {
                       error:(NSError **)error {
     IOAVServiceRef svc = [self serviceFor:displayID];
     if (!svc) {
-        if (error) *error = brightnessError(1, @"This display does not support DDC.");
+        if (error) *error = DDError(kBrightnessErrorDomain, 1, @"This display does not support DDC.");
         return NO;
     }
 
@@ -164,8 +160,8 @@ static NSError *brightnessError(NSInteger code, NSString *message) {
     }
 
     if (error) {
-        *error = brightnessError(last,
-            [NSString stringWithFormat:@"DDC write failed (IOReturn 0x%X).", last]);
+        *error = DDError(kBrightnessErrorDomain, last,
+            @"DDC write failed (IOReturn 0x%X).", last);
     }
     return NO;
 }
@@ -176,15 +172,15 @@ static NSError *brightnessError(NSInteger code, NSString *message) {
     DSBrightnessFns f = dsBrightness();
     DSSetFn setFn = f.set ?: f.setSmooth;
     if (!setFn) {
-        if (error) *error = brightnessError(-1,
+        if (error) *error = DDError(kBrightnessErrorDomain, -1,
             @"DisplayServices is unavailable on this macOS version.");
         return NO;
     }
 
     int rc = setFn(displayID, percent / 100.0f);
     if (rc != 0) {
-        if (error) *error = brightnessError(rc,
-            [NSString stringWithFormat:@"DisplayServices rejected the brightness (rc=%d).", rc]);
+        if (error) *error = DDError(kBrightnessErrorDomain, rc,
+            @"DisplayServices rejected the brightness (rc=%d).", rc);
         return NO;
     }
     return YES;

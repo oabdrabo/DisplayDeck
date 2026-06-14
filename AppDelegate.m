@@ -218,18 +218,14 @@ static NSString *ddLogicalString(size_t w, size_t h) {
 - (void)addKeepAwakeSectionToMenu:(NSMenu *)menu {
     Caffeine *caf = [Caffeine shared];
 
-    NSMenuItem *toggle = [[NSMenuItem alloc] initWithTitle:@"Keep Awake"
-        action:@selector(toggleKeepAwake:) keyEquivalent:@""];
-    toggle.target = self;
-    toggle.state = caf.active ? NSControlStateValueOn : NSControlStateValueOff;
-    [menu addItem:toggle];
-
+    // The on/off toggle lives on the menu-bar icon (left-click); the menu only
+    // offers the timed durations the icon can't.
     if (caf.active && caf.expiry) {
         NSDateFormatter *df = [[NSDateFormatter alloc] init];
         df.timeStyle = NSDateFormatterShortStyle;
         df.dateStyle = NSDateFormatterNoStyle;
         [self addLabelToMenu:menu title:
-            [NSString stringWithFormat:@"    until %@", [df stringFromDate:caf.expiry]]];
+            [NSString stringWithFormat:@"Awake until %@", [df stringFromDate:caf.expiry]]];
     }
 
     NSMenuItem *forItem = [[NSMenuItem alloc] initWithTitle:@"Keep Awake for"
@@ -249,12 +245,6 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     [menu addItem:forItem];
 
     [menu addItem:[NSMenuItem separatorItem]];
-}
-
-- (void)toggleKeepAwake:(NSMenuItem *)sender {
-    (void)sender;
-    [[Caffeine shared] toggle];
-    [self rebuildMenu];
 }
 
 - (void)keepAwakeFor:(NSMenuItem *)sender {

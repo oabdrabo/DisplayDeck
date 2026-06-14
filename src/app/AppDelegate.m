@@ -18,16 +18,12 @@ static NSString * const kFrostedBlur        = @"FrostedBlur";
 static NSString * const kAutoManageNotifID = @"auto-manage";
 
 
-static const NSUInteger kModeColLogical = 17;
-static const NSUInteger kModeColType    = 10;
+static const CGFloat kModeTabType = 112;
+static const CGFloat kModeTabRate = 184;
 
 static const CGFloat kSliderRowWidth = 150;
 static const NSInteger kSliderItemTag = 0x51D5;
 static const void *kDDPctLabelKey = &kDDPctLabelKey;
-
-static NSString *ddPad(NSString *s, NSUInteger length) {
-    return [s stringByPaddingToLength:length withString:@" " startingAtIndex:0];
-}
 
 static NSString *ddRateString(double hz, NSString *fallback) {
     return hz > 0 ? [NSString stringWithFormat:@"%.0fHz", hz] : fallback;
@@ -35,6 +31,31 @@ static NSString *ddRateString(double hz, NSString *fallback) {
 
 static NSString *ddLogicalString(size_t w, size_t h) {
     return [NSString stringWithFormat:@"%zu \u00D7 %zu", w, h];
+}
+
+static NSImage *ddSymbol(NSString *name) {
+    NSImageSymbolConfiguration *cfg =
+        [NSImageSymbolConfiguration configurationWithPointSize:13 weight:NSFontWeightRegular];
+    NSImage *img = [[NSImage imageWithSystemSymbolName:name accessibilityDescription:nil]
+                    imageWithSymbolConfiguration:cfg];
+    img.template = YES;
+    return img;
+}
+
+static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *tabs,
+                                     NSFont *font, NSColor *color) {
+    NSMutableParagraphStyle *ps = [[NSMutableParagraphStyle alloc] init];
+    NSMutableArray<NSTextTab *> *stops = [NSMutableArray array];
+    for (NSUInteger i = 0; i + 1 < cols.count; i++) {
+        [stops addObject:[[NSTextTab alloc] initWithType:NSLeftTabStopType
+                                                location:tabs[i]]];
+    }
+    ps.tabStops = stops;
+    NSMutableDictionary *attrs = [@{ NSFontAttributeName: font,
+                                     NSParagraphStyleAttributeName: ps } mutableCopy];
+    if (color) attrs[NSForegroundColorAttributeName] = color;
+    return [[NSAttributedString alloc]
+            initWithString:[cols componentsJoinedByString:@"\t"] attributes:attrs];
 }
 
 @interface AppDelegate () <UNUserNotificationCenterDelegate, NSMenuDelegate>
@@ -202,6 +223,7 @@ static NSString *ddLogicalString(size_t w, size_t h) {
 
     NSMenuItem *settingsItem = [[NSMenuItem alloc]
         initWithTitle:@"Settings" action:nil keyEquivalent:@""];
+    settingsItem.image = ddSymbol(@"gearshape");
     NSMenu *settingsMenu = [[NSMenu alloc] init];
     settingsMenu.autoenablesItems = NO;
     settingsMenu.delegate = self;
@@ -212,6 +234,7 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     NSMenuItem *quit = [[NSMenuItem alloc] initWithTitle:@"Quit"
         action:@selector(terminate:) keyEquivalent:@"q"];
     quit.target = NSApp;
+    quit.image = ddSymbol(@"power");
     [menu addItem:quit];
 
     [self sizeSliderRowsInMenu:menu];
@@ -232,6 +255,7 @@ static NSString *ddLogicalString(size_t w, size_t h) {
 
     NSMenuItem *forItem = [[NSMenuItem alloc] initWithTitle:@"Keep Awake for"
         action:nil keyEquivalent:@""];
+    forItem.image = ddSymbol(@"cup.and.saucer");
     NSMenu *durMenu = [[NSMenu alloc] init];
     durMenu.autoenablesItems = NO;
     NSArray *durations = @[ @[@"15 minutes", @900], @[@"30 minutes", @1800],
@@ -252,10 +276,12 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     [self rebuildMenu];
 }
 
-- (NSMenuItem *)actionItem:(NSString *)title action:(SEL)action displayID:(CGDirectDisplayID)did {
+- (NSMenuItem *)actionItem:(NSString *)title action:(SEL)action
+                 displayID:(CGDirectDisplayID)did symbol:(NSString *)symbol {
     NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title action:action keyEquivalent:@""];
     item.target = self;
     item.representedObject = @(did);
+    if (symbol) item.image = ddSymbol(symbol);
     return item;
 }
 
@@ -272,7 +298,8 @@ static NSString *ddLogicalString(size_t w, size_t h) {
 
     if (forced) {
         [menu addItem:[self actionItem:@"Stop Forced HiDPI"
-                                action:@selector(stopForcedHiDPI:) displayID:display.displayID]];
+                                action:@selector(stopForcedHiDPI:) displayID:display.displayID
+                                symbol:@"arrow.uturn.backward"]];
         return;
     }
     if (!display.isActive) {
@@ -284,7 +311,8 @@ static NSString *ddLogicalString(size_t w, size_t h) {
             [self addLabelToMenu:menu title:line];
         }
         [menu addItem:[self actionItem:@"Enable"
-                                action:@selector(enableDisplay:) displayID:display.displayID]];
+                                action:@selector(enableDisplay:) displayID:display.displayID
+                                symbol:@"power"]];
         return;
     }
 
@@ -296,7 +324,8 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         int maxPct = (int)lroundf([[BrightnessBooster shared]
                                    maxBoostForDisplay:display.displayID] * 100.0f);
         if (maxPct < 100) maxPct = 100;
-        [menu addItem:[self sliderRowWithLabel:@"Brightness" percent:shown minPct:10
+        [menu addItem:[self sliderRowWithLabel:@"Brightness" icon:ddSymbol(@"sun.max")
+                                       percent:shown minPct:10
                                         maxPct:maxPct continuous:YES tag:display.displayID
                                         action:@selector(brightnessSliderChanged:)
                                    pinnedState:-1]];
@@ -304,6 +333,7 @@ static NSString *ddLogicalString(size_t w, size_t h) {
             NSMenuItem *auto_ = [[NSMenuItem alloc] initWithTitle:@"Auto-brightness"
                 action:@selector(toggleAutoBrightness:) keyEquivalent:@""];
             auto_.target = self;
+            auto_.image = ddSymbol(@"sun.max");
             auto_.tag = (NSInteger)display.displayID;
             auto_.state = [[Brightness shared] autoBrightnessEnabled:display.displayID]
                 ? NSControlStateValueOn : NSControlStateValueOff;
@@ -317,6 +347,7 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         NSMutableString *rt = [NSMutableString stringWithString:@"Resolution"];
         if (lw) [rt appendFormat:@"   %@", ddLogicalString(lw, lh)];
         NSMenuItem *res = [[NSMenuItem alloc] initWithTitle:rt action:nil keyEquivalent:@""];
+        res.image = ddSymbol(@"rectangle.on.rectangle");
         res.submenu = [self buildModesSubmenuForDisplay:display.displayID modes:modes];
         [menu addItem:res];
     }
@@ -325,6 +356,7 @@ static NSString *ddLogicalString(size_t w, size_t h) {
             [self.displayManager forceHiDPIOptionsForDisplay:display.displayID];
         if (options.count > 0) {
             NSMenuItem *fh = [[NSMenuItem alloc] initWithTitle:@"Force HiDPI" action:nil keyEquivalent:@""];
+            fh.image = ddSymbol(@"arrow.up.left.and.arrow.down.right.magnifyingglass");
             fh.submenu = [self buildForceHiDPISubmenuForDisplay:display.displayID options:options];
             [menu addItem:fh];
         }
@@ -336,9 +368,11 @@ static NSString *ddLogicalString(size_t w, size_t h) {
                                     : @"Install Crisp HiDPI\u2026")
                             action:(installed ? @selector(uninstallCrispHiDPI:)
                                               : @selector(installCrispHiDPI:))
-                         displayID:display.displayID]];
+                         displayID:display.displayID
+                            symbol:@"sparkles"]];
     [menu addItem:[self actionItem:@"Disable"
-                            action:@selector(disableDisplay:) displayID:display.displayID]];
+                            action:@selector(disableDisplay:) displayID:display.displayID
+                            symbol:@"power"]];
 }
 
 - (NSMenu *)buildForceHiDPISubmenuForDisplay:(CGDirectDisplayID)displayID
@@ -346,8 +380,8 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     NSMenu *submenu = [[NSMenu alloc] init];
     submenu.autoenablesItems = NO;
 
-    NSFont *mono     = [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightRegular];
-    NSFont *monoBold = [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightMedium];
+    NSFont *font = [NSFont menuFontOfSize:13];
+    NSFont *bold = [NSFont boldSystemFontOfSize:12];
 
     DDDisplayMode *currentlyForced = [self.displayManager forcedTargetForDisplay:displayID];
 
@@ -355,29 +389,25 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         BOOL isCurrent = (currentlyForced &&
                           currentlyForced.pixelWidth  == mode.pixelWidth &&
                           currentlyForced.pixelHeight == mode.pixelHeight);
-        NSString *sizeCol = ddPad(ddLogicalString(mode.logicalWidth, mode.logicalHeight),
-                                  kModeColLogical);
-        NSString *rateStr = ddRateString(mode.refreshRate, @"");
-        NSString *line = [NSString stringWithFormat:@"%@%@", sizeCol, rateStr];
+        NSString *size = ddLogicalString(mode.logicalWidth, mode.logicalHeight);
+        NSString *rate = ddRateString(mode.refreshRate, @"");
         NSMenuItem *item = [[NSMenuItem alloc]
-            initWithTitle:line
+            initWithTitle:@""
                    action:isCurrent ? nil : @selector(forceHiDPIAtMode:)
             keyEquivalent:@""];
         item.target = self;
         item.enabled = !isCurrent;
         item.representedObject = @{ @"displayID": @(displayID), @"mode": mode };
-        item.attributedTitle = [[NSAttributedString alloc]
-            initWithString:line
-                attributes:@{NSFontAttributeName: isCurrent ? monoBold : mono}];
+        item.attributedTitle = ddColumns(@[size, rate], (const CGFloat[]){kModeTabType},
+                                         isCurrent ? bold : font, nil);
         if (isCurrent) item.state = NSControlStateValueOn;
         return item;
     };
 
     NSMenuItem *colHeader = [[NSMenuItem alloc] initWithTitle:@"" action:nil keyEquivalent:@""];
-    colHeader.attributedTitle = [[NSAttributedString alloc]
-        initWithString:[NSString stringWithFormat:@"%@%@",
-                        ddPad(@"Looks Like", kModeColLogical), @"Rate"]
-            attributes:@{NSFontAttributeName: monoBold}];
+    colHeader.attributedTitle = ddColumns(@[@"Looks Like", @"Rate"],
+                                          (const CGFloat[]){kModeTabType},
+                                          bold, [NSColor secondaryLabelColor]);
     colHeader.enabled = NO;
     [submenu addItem:colHeader];
     [submenu addItem:[NSMenuItem separatorItem]];
@@ -429,14 +459,18 @@ static NSString *ddLogicalString(size_t w, size_t h) {
             int p = (int)lroundf(w.alpha * 100.0f);
             if (p < pct) pct = p;
         }
-        [menu addItem:[self sliderRowWithLabel:app.name percent:pct minPct:20
+        NSImage *appIcon = [[NSRunningApplication
+            runningApplicationWithProcessIdentifier:app.pid] icon];
+        [menu addItem:[self sliderRowWithLabel:app.name icon:appIcon
+                                       percent:pct minPct:20
                                         maxPct:100 continuous:YES tag:app.pid
                                         action:@selector(opacitySliderChanged:)
                                    pinnedState:(app.pinned ? 1 : 0)]];
     }
 
     [menu addItem:[NSMenuItem separatorItem]];
-    [menu addItem:[self sliderRowWithLabel:@"All apps" percent:100 minPct:20
+    [menu addItem:[self sliderRowWithLabel:@"All apps" icon:ddSymbol(@"square.on.square")
+                                   percent:100 minPct:20
                                     maxPct:100 continuous:YES tag:0
                                     action:@selector(opacitySliderChanged:)
                                pinnedState:-1]];
@@ -444,6 +478,7 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         initWithTitle:@"Reset all (100%)"
                action:@selector(resetAllTransparency:) keyEquivalent:@""];
     reset.target = self;
+    reset.image = ddSymbol(@"arrow.counterclockwise");
     [menu addItem:reset];
 }
 
@@ -458,6 +493,7 @@ static NSString *ddLogicalString(size_t w, size_t h) {
 }
 
 - (NSMenuItem *)sliderRowWithLabel:(NSString *)label
+                              icon:(NSImage *)icon
                            percent:(int)pct
                             minPct:(int)minPct
                             maxPct:(int)maxPct
@@ -466,6 +502,14 @@ static NSString *ddLogicalString(size_t w, size_t h) {
                             action:(SEL)action
                        pinnedState:(int)pinnedState {
     NSView *row = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, kSliderRowWidth, 24)];
+
+    NSImageView *iconView = nil;
+    if (icon) {
+        iconView = [NSImageView imageViewWithImage:icon];
+        iconView.imageScaling = NSImageScaleProportionallyDown;
+        iconView.translatesAutoresizingMaskIntoConstraints = NO;
+        [row addSubview:iconView];
+    }
 
     NSTextField *name = [NSTextField labelWithString:label];
     name.font = [NSFont menuFontOfSize:13];
@@ -513,7 +557,6 @@ static NSString *ddLogicalString(size_t w, size_t h) {
 
     NSMutableArray<NSLayoutConstraint *> *constraints = [@[
         [row.heightAnchor constraintEqualToConstant:24],
-        [name.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:14],
         [name.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
         [name.widthAnchor constraintEqualToConstant:74],
         [slider.leadingAnchor constraintEqualToAnchor:name.trailingAnchor constant:8],
@@ -533,6 +576,19 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     } else {
         [constraints addObject:
             [value.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-14]];
+    }
+
+    if (iconView) {
+        [constraints addObjectsFromArray:@[
+            [iconView.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:14],
+            [iconView.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+            [iconView.widthAnchor constraintEqualToConstant:16],
+            [iconView.heightAnchor constraintEqualToConstant:16],
+            [name.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:7],
+        ]];
+    } else {
+        [constraints addObject:
+            [name.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:14]];
     }
     [NSLayoutConstraint activateConstraints:constraints];
 
@@ -656,51 +712,38 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     NSMenu *submenu = [[NSMenu alloc] init];
     submenu.autoenablesItems = NO;
 
-    NSFont *mono     = [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightRegular];
-    NSFont *monoBold = [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightMedium];
+    NSFont *font = [NSFont menuFontOfSize:13];
+    NSFont *bold = [NSFont boldSystemFontOfSize:12];
+    const CGFloat tabs[2] = { kModeTabType, kModeTabRate };
 
-    NSMenuItem *header = [[NSMenuItem alloc]
-        initWithTitle:@"" action:nil keyEquivalent:@""];
-    NSString *headerLine = [NSString stringWithFormat:@"%@%@%@",
-        ddPad(@"Looks Like", kModeColLogical),
-        ddPad(@"Type", kModeColType),
-        @"Rate"];
-    header.attributedTitle = [[NSAttributedString alloc]
-        initWithString:headerLine
-            attributes:@{NSFontAttributeName: [NSFont monospacedSystemFontOfSize:11
-                                                weight:NSFontWeightBold]}];
+    NSMenuItem *header = [[NSMenuItem alloc] initWithTitle:@"" action:nil keyEquivalent:@""];
+    header.attributedTitle = ddColumns(@[@"Looks Like", @"Type", @"Rate"], tabs,
+                                       bold, [NSColor secondaryLabelColor]);
     header.enabled = NO;
     [submenu addItem:header];
     [submenu addItem:[NSMenuItem separatorItem]];
 
     for (DDDisplayMode *mode in modes) {
-        NSString *rateStr = ddRateString(mode.refreshRate, @"--");
-        NSString *logicalCol = ddPad(ddLogicalString(mode.logicalWidth, mode.logicalHeight),
-                                     kModeColLogical);
-        NSString *typeCol = ddPad(mode.isHiDPI ? @"HiDPI" : @"Standard", kModeColType);
-        NSString *marker = mode.isDefaultForDisplay ? @"  ★" : @"";
-        NSString *line = [NSString stringWithFormat:@"%@%@%@%@",
-                          logicalCol, typeCol, rateStr, marker];
+        NSString *rate = ddRateString(mode.refreshRate, @"—");
+        if (mode.isDefaultForDisplay) rate = [rate stringByAppendingString:@"  ★"];
+        NSString *type = mode.isHiDPI ? @"HiDPI" : @"Standard";
+        NSString *logical = ddLogicalString(mode.logicalWidth, mode.logicalHeight);
 
         NSMenuItem *item = [[NSMenuItem alloc]
-            initWithTitle:line
+            initWithTitle:@""
                    action:mode.isCurrent ? nil : @selector(switchMode:)
             keyEquivalent:@""];
         item.target = self;
         item.enabled = !mode.isCurrent;
-        item.representedObject = @{
-            @"mode": mode,
-            @"displayID": @(displayID),
-        };
-        item.attributedTitle = [[NSAttributedString alloc]
-            initWithString:line
-                attributes:@{NSFontAttributeName: mode.isCurrent ? monoBold : mono}];
+        item.representedObject = @{ @"mode": mode, @"displayID": @(displayID) };
+        item.attributedTitle = ddColumns(@[logical, type, rate], tabs,
+                                         mode.isCurrent ? bold : font, nil);
         if (mode.isCurrent) item.state = NSControlStateValueOn;
         [submenu addItem:item];
     }
 
     [submenu addItem:[NSMenuItem separatorItem]];
-    [self addLabelToMenu:submenu title:@"★ = panel-native (no scaling, crispest)"];
+    [self addLabelToMenu:submenu title:@"★ = panel-native (crispest)"];
 
     return submenu;
 }

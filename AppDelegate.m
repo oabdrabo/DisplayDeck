@@ -23,6 +23,7 @@ static const NSUInteger kModeColLogical = 17;
 static const NSUInteger kModeColType    = 10;
 
 static const CGFloat kSliderRowWidth = 232;
+static const NSInteger kSliderItemTag = 0x51D5;
 static const void *kDDPctLabelKey = &kDDPctLabelKey;
 
 static NSString *ddPad(NSString *s, NSUInteger length) {
@@ -189,6 +190,8 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         action:@selector(terminate:) keyEquivalent:@"q"];
     quit.target = NSApp;
     [menu addItem:quit];
+
+    [self sizeSliderRowsInMenu:menu];
 }
 
 - (NSMenuItem *)actionItem:(NSString *)title action:(SEL)action displayID:(CGDirectDisplayID)did {
@@ -387,8 +390,8 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     [row addSubview:value];
     objc_setAssociatedObject(slider, kDDPctLabelKey, value, OBJC_ASSOCIATION_ASSIGN);
 
-    // No fixed width on the row → the menu stretches it to the content width,
-    // and the slider grows to fill, so there's no dead space on the right.
+    // Row width is set to the final menu width in -sizeSliderRowsInMenu: (NSMenu
+    // does not stretch custom views), so the slider + value fill to the edge.
     [NSLayoutConstraint activateConstraints:@[
         [row.heightAnchor constraintEqualToConstant:24],
         [name.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:14],
@@ -403,8 +406,21 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     ]];
 
     NSMenuItem *item = [[NSMenuItem alloc] init];
+    item.tag = kSliderItemTag;
     item.view = row;
     return item;
+}
+
+- (void)sizeSliderRowsInMenu:(NSMenu *)menu {
+    CGFloat w = menu.size.width;
+    for (NSMenuItem *item in menu.itemArray) {
+        if (item.tag != kSliderItemTag || !item.view) continue;
+        NSRect f = item.view.frame;
+        if (f.size.width == w) continue;
+        f.size.width = w;
+        item.view.frame = f;
+        [item.view layoutSubtreeIfNeeded];
+    }
 }
 
 - (void)syncSliderLabel:(NSSlider *)slider {

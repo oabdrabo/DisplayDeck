@@ -230,8 +230,12 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         NSArray<DDDisplayMode *> *modes = [self.displayManager modesForDisplay:display.displayID];
         size_t lw = display.logicalWidth ?: display.pixelWidth;
         size_t lh = display.logicalHeight ?: display.pixelHeight;
-        NSString *rt = lw ? [NSString stringWithFormat:@"Resolution   %@", ddLogicalString(lw, lh)]
-                          : @"Resolution";
+        NSMutableString *rt = [NSMutableString stringWithString:@"Resolution"];
+        if (lw) {
+            [rt appendFormat:@"   %@", ddLogicalString(lw, lh)];
+            if (display.isHiDPI) [rt appendString:@"  HiDPI"];
+            if (display.refreshRate > 0) [rt appendFormat:@" · %.0fHz", display.refreshRate];
+        }
         NSMenuItem *res = [[NSMenuItem alloc] initWithTitle:rt action:nil keyEquivalent:@""];
         res.submenu = [self buildModesSubmenuForDisplay:display.displayID modes:modes];
         [menu addItem:res];

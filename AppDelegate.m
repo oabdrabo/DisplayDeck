@@ -157,9 +157,14 @@ static NSString *ddLogicalString(size_t w, size_t h) {
 
 - (void)updateStatusIcon {
     BOOL awake = [Caffeine shared].active;
-    NSString *symbolName = awake ? @"cup.and.heat.waves.fill" : @"cup.and.heat.waves";
-    NSImage *icon = [NSImage imageWithSystemSymbolName:symbolName
-                               accessibilityDescription:@"DisplayDisabler"];
+    NSString *symbolName = awake ? @"mug.fill" : @"mug";
+    NSImageSymbolConfiguration *cfg =
+        [NSImageSymbolConfiguration configurationWithPointSize:16
+                                                        weight:NSFontWeightRegular
+                                                         scale:NSImageSymbolScaleMedium];
+    NSImage *icon = [[NSImage imageWithSystemSymbolName:symbolName
+                                accessibilityDescription:@"DisplayDisabler"]
+                     imageWithSymbolConfiguration:cfg];
     [icon setTemplate:YES];
     self.statusItem.button.image = icon;
 }

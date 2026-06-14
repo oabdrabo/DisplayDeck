@@ -157,7 +157,7 @@ static NSString *ddLogicalString(size_t w, size_t h) {
 
 - (void)updateStatusIcon {
     BOOL awake = [Caffeine shared].active;
-    NSString *symbolName = awake ? @"mug.fill" : @"mug";
+    NSString *symbolName = awake ? @"cup.and.heat.waves.fill" : @"cup.and.heat.waves";
     NSImage *icon = [NSImage imageWithSystemSymbolName:symbolName
                                accessibilityDescription:@"DisplayDisabler"];
     [icon setTemplate:YES];

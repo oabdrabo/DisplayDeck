@@ -3,6 +3,7 @@
 #import "Brightness.h"
 #import "HiDPIInjector.h"
 #import "WindowTransparency.h"
+#import "WindowPiP.h"
 #import "BrightnessBooster.h"
 #import "ColorTemperature.h"
 #import "Caffeine.h"
@@ -352,7 +353,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
                                        percent:shown minPct:10
                                         maxPct:maxPct continuous:YES tag:display.displayID
                                         action:@selector(brightnessSliderChanged:)
-                                     accessory:autoToggle]];
+                                     accessories:(autoToggle ? @[autoToggle] : @[])]];
     }
     int warmth = (int)lroundf([[ColorTemperature shared]
                                warmthForDisplay:display.displayID] * 100.0f);
@@ -360,7 +361,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
                                    percent:warmth minPct:0
                                     maxPct:100 continuous:YES tag:display.displayID
                                     action:@selector(warmthSliderChanged:)
-                                 accessory:nil]];
+                                 accessories:@[]]];
     if ([self pref:kShowResolutions]) {
         NSArray<DDDisplayMode *> *modes = [self.displayManager modesForDisplay:display.displayID];
         size_t lw = display.logicalWidth ?: display.pixelWidth;
@@ -482,6 +483,9 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
         }
         NSImage *appIcon = [[NSRunningApplication
             runningApplicationWithProcessIdentifier:app.pid] icon];
+        NSButton *pip = [self rowToggleWithSymbol:@"pip.enter" onSymbol:@"pip.exit"
+            state:[[WindowPiP shared] isActiveForApp:app.pid] tag:app.pid
+           action:@selector(togglePiPApp:) tooltip:@"Picture in picture"];
         NSButton *pin = [self rowToggleWithSymbol:@"pin" onSymbol:@"pin.fill"
             state:app.pinned tag:app.pid
            action:@selector(togglePinApp:) tooltip:@"Keep on top"];
@@ -489,7 +493,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
                                        percent:pct minPct:20
                                         maxPct:100 continuous:YES tag:app.pid
                                         action:@selector(opacitySliderChanged:)
-                                     accessory:pin]];
+                                   accessories:@[pip, pin]]];
     }
 
     [menu addItem:[NSMenuItem separatorItem]];
@@ -497,7 +501,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
                                    percent:100 minPct:20
                                     maxPct:100 continuous:YES tag:0
                                     action:@selector(opacitySliderChanged:)
-                                 accessory:nil]];
+                                 accessories:@[]]];
     NSMenuItem *reset = [[NSMenuItem alloc]
         initWithTitle:@"Reset all (100%)"
                action:@selector(resetAllTransparency:) keyEquivalent:@""];
@@ -533,7 +537,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
                         continuous:(BOOL)continuous
                                tag:(NSInteger)tag
                             action:(SEL)action
-                         accessory:(NSButton *)accessory {
+                       accessories:(NSArray<NSButton *> *)accessories {
     NSView *row = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, kSliderRowWidth, 24)];
 
     NSImageView *iconView = nil;
@@ -574,7 +578,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
     [row addSubview:value];
     objc_setAssociatedObject(slider, kDDPctLabelKey, value, OBJC_ASSOCIATION_ASSIGN);
 
-    if (accessory) [row addSubview:accessory];
+    for (NSButton *btn in accessories) [row addSubview:btn];
 
     NSMutableArray<NSLayoutConstraint *> *constraints = [@[
         [row.heightAnchor constraintEqualToConstant:24],
@@ -587,13 +591,27 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
         [value.widthAnchor constraintGreaterThanOrEqualToConstant:30],
     ] mutableCopy];
 
-    if (accessory) {
+    NSButton *leftmost = nil;
+    NSButton *rightNeighbor = nil;
+    for (NSInteger i = (NSInteger)accessories.count - 1; i >= 0; i--) {
+        NSButton *btn = accessories[i];
         [constraints addObjectsFromArray:@[
-            [accessory.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-12],
-            [accessory.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-            [accessory.widthAnchor constraintEqualToConstant:18],
-            [value.trailingAnchor constraintEqualToAnchor:accessory.leadingAnchor constant:-7],
+            [btn.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+            [btn.widthAnchor constraintEqualToConstant:18],
         ]];
+        if (rightNeighbor) {
+            [constraints addObject:
+                [btn.trailingAnchor constraintEqualToAnchor:rightNeighbor.leadingAnchor constant:-4]];
+        } else {
+            [constraints addObject:
+                [btn.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-12]];
+        }
+        rightNeighbor = btn;
+        leftmost = btn;
+    }
+    if (leftmost) {
+        [constraints addObject:
+            [value.trailingAnchor constraintEqualToAnchor:leftmost.leadingAnchor constant:-7]];
     } else {
         [constraints addObject:
             [value.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-14]];
@@ -681,6 +699,17 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
     [[WindowTransparency shared] setPinned:(sender.state == NSControlStateValueOn)
                                     forApp:(pid_t)sender.tag error:&error];
     if (error) NSLog(@"DisplayDisabler: pin failed: %@", error);
+}
+
+- (void)togglePiPApp:(NSButton *)sender {
+    WindowPiP *pip = [WindowPiP shared];
+    if (![pip hasAccessibility]) {
+        [pip requestAccessibility];
+        sender.state = NSControlStateValueOff;
+        return;
+    }
+    BOOL active = [pip toggleForApp:(pid_t)sender.tag];
+    sender.state = active ? NSControlStateValueOn : NSControlStateValueOff;
 }
 
 - (void)resetAllTransparency:(NSMenuItem *)sender {

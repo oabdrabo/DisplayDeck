@@ -133,6 +133,7 @@ typedef CGError (^DisplayConfigBlock)(CGDisplayConfigRef config);
 @property (nonatomic) BOOL realignInFlight;
 @property (nonatomic) BOOL applyingForce;
 @property (nonatomic) BOOL vdTerminationDeferred;
+@property (nonatomic, strong) NSMutableDictionary<NSNumber *, DDDisplayInfo *> *disabledInfos;
 - (void)scheduleChangeNotification;
 - (void)handleSharedVirtualDisplayTerminated;
 - (void)clearForceState;
@@ -154,8 +155,47 @@ static void displayReconfigCallback(CGDirectDisplayID display __unused,
     self = [super init];
     if (self) {
         _forcedPhysical = kCGNullDirectDisplay;
+        _disabledInfos = [NSMutableDictionary dictionary];
+        [self loadDisabledInfos];
     }
     return self;
+}
+
+static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
+
+- (void)loadDisabledInfos {
+    NSDictionary *saved = [[NSUserDefaults standardUserDefaults]
+                           dictionaryForKey:kDisabledDisplaysKey];
+    for (NSString *key in saved) {
+        NSDictionary *d = saved[key];
+        if (![d isKindOfClass:[NSDictionary class]]) continue;
+        DDDisplayInfo *info = [[DDDisplayInfo alloc] init];
+        info.displayID     = (CGDirectDisplayID)key.longLongValue;
+        info.name          = d[@"name"] ?: @"Display";
+        info.isBuiltIn     = [d[@"builtin"] boolValue];
+        info.isActive      = NO;
+        info.pixelWidth    = [d[@"pw"] unsignedLongValue];
+        info.pixelHeight   = [d[@"ph"] unsignedLongValue];
+        info.logicalWidth  = [d[@"lw"] unsignedLongValue];
+        info.logicalHeight = [d[@"lh"] unsignedLongValue];
+        info.refreshRate   = [d[@"hz"] doubleValue];
+        info.isHiDPI       = [d[@"hidpi"] boolValue];
+        self.disabledInfos[@(info.displayID)] = info;
+    }
+}
+
+- (void)saveDisabledInfos {
+    NSMutableDictionary *out = [NSMutableDictionary dictionary];
+    for (NSNumber *idNum in self.disabledInfos) {
+        DDDisplayInfo *i = self.disabledInfos[idNum];
+        out[idNum.stringValue] = @{
+            @"name": i.name ?: @"Display", @"builtin": @(i.isBuiltIn),
+            @"pw": @(i.pixelWidth), @"ph": @(i.pixelHeight),
+            @"lw": @(i.logicalWidth), @"lh": @(i.logicalHeight),
+            @"hz": @(i.refreshRate), @"hidpi": @(i.isHiDPI),
+        };
+    }
+    [[NSUserDefaults standardUserDefaults] setObject:out forKey:kDisabledDisplaysKey];
 }
 
 + (instancetype)shared {
@@ -274,11 +314,10 @@ static void displayReconfigCallback(CGDirectDisplayID display __unused,
 
 - (NSArray<DDDisplayInfo *> *)allDisplays {
     NSArray<NSNumber *> *online = ddQueryDisplayList(CGGetOnlineDisplayList);
-    if (online.count == 0) return @[];
-
+    NSSet<NSNumber *> *onlineSet = [NSSet setWithArray:online];
     NSSet<NSNumber *> *activeSet = [NSSet setWithArray:ddQueryDisplayList(CGGetActiveDisplayList)];
 
-    NSMutableArray<DDDisplayInfo *> *result = [NSMutableArray arrayWithCapacity:online.count];
+    NSMutableArray<DDDisplayInfo *> *result = [NSMutableArray array];
 
     for (NSNumber *didNum in online) {
         CGDirectDisplayID did = didNum.unsignedIntValue;
@@ -305,6 +344,21 @@ static void displayReconfigCallback(CGDirectDisplayID display __unused,
         }
 
         [result addObject:info];
+    }
+
+    // Surface displays we disabled (they've dropped off the online list, so
+    // they wouldn't appear otherwise — leaving no way to re-enable them).
+    // Reconcile: drop any that have since come back online on their own.
+    if (self.disabledInfos.count > 0) {
+        NSMutableArray<NSNumber *> *reappeared = [NSMutableArray array];
+        for (NSNumber *idNum in self.disabledInfos) {
+            if ([onlineSet containsObject:idNum]) { [reappeared addObject:idNum]; continue; }
+            [result addObject:self.disabledInfos[idNum]];
+        }
+        if (reappeared.count > 0) {
+            [self.disabledInfos removeObjectsForKeys:reappeared];
+            [self saveDisabledInfos];
+        }
     }
 
     return result;
@@ -449,15 +503,40 @@ static void displayReconfigCallback(CGDirectDisplayID display __unused,
 }
 
 - (BOOL)disableDisplay:(CGDirectDisplayID)displayID error:(NSError **)error {
-    return [self performDisplayConfig:^CGError(CGDisplayConfigRef config) {
+    // Capture the display's details first: once disabled it drops off the online
+    // list, so this is the only record we have to keep showing it (with "Enable").
+    DDDisplayInfo *captured = nil;
+    for (DDDisplayInfo *d in [self allDisplays]) {
+        if (d.displayID == displayID) { captured = d; break; }
+    }
+
+    BOOL ok = [self performDisplayConfig:^CGError(CGDisplayConfigRef config) {
         return CGSConfigureDisplayEnabled(config, displayID, false);
     } error:error];
+
+    if (ok) {
+        if (!captured) {
+            captured = [[DDDisplayInfo alloc] init];
+            captured.displayID = displayID;
+            captured.name = [self nameForDisplayID:displayID];
+            captured.isBuiltIn = CGDisplayIsBuiltin(displayID);
+        }
+        captured.isActive = NO;
+        self.disabledInfos[@(displayID)] = captured;
+        [self saveDisabledInfos];
+    }
+    return ok;
 }
 
 - (BOOL)enableDisplay:(CGDirectDisplayID)displayID error:(NSError **)error {
-    return [self performDisplayConfig:^CGError(CGDisplayConfigRef config) {
+    BOOL ok = [self performDisplayConfig:^CGError(CGDisplayConfigRef config) {
         return CGSConfigureDisplayEnabled(config, displayID, true);
     } error:error];
+    if (ok) {
+        [self.disabledInfos removeObjectForKey:@(displayID)];
+        [self saveDisabledInfos];
+    }
+    return ok;
 }
 
 - (BOOL)setMode:(DDDisplayMode *)mode forDisplay:(CGDirectDisplayID)displayID error:(NSError **)error {

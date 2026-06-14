@@ -303,6 +303,15 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         [menu addItem:[self sliderRowWithLabel:@"Brightness" percent:shown minPct:10
                                         maxPct:maxPct continuous:YES tag:display.displayID
                                         action:@selector(brightnessSliderChanged:)]];
+        if ([[Brightness shared] supportsAutoBrightness:display.displayID]) {
+            NSMenuItem *auto_ = [[NSMenuItem alloc] initWithTitle:@"Auto-brightness"
+                action:@selector(toggleAutoBrightness:) keyEquivalent:@""];
+            auto_.target = self;
+            auto_.tag = (NSInteger)display.displayID;
+            auto_.state = [[Brightness shared] autoBrightnessEnabled:display.displayID]
+                ? NSControlStateValueOn : NSControlStateValueOff;
+            [menu addItem:auto_];
+        }
     }
     if ([self pref:kShowResolutions]) {
         NSArray<DDDisplayMode *> *modes = [self.displayManager modesForDisplay:display.displayID];
@@ -521,6 +530,13 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     if (pid == 0) [[WindowTransparency shared] setAlphaForAllWindows:sender.floatValue error:&error];
     else          [[WindowTransparency shared] setAlpha:sender.floatValue forApp:pid error:&error];
     if (error) NSLog(@"DisplayDisabler: transparency failed: %@", error);
+}
+
+- (void)toggleAutoBrightness:(NSMenuItem *)sender {
+    CGDirectDisplayID did = (CGDirectDisplayID)sender.tag;
+    BOOL newState = ![[Brightness shared] autoBrightnessEnabled:did];
+    [[Brightness shared] setAutoBrightness:newState forDisplay:did];
+    sender.state = newState ? NSControlStateValueOn : NSControlStateValueOff;
 }
 
 - (void)brightnessSliderChanged:(NSSlider *)sender {

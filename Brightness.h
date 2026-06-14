@@ -15,6 +15,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (int)brightnessPercentForDisplay:(CGDirectDisplayID)displayID;
 
+- (BOOL)supportsAutoBrightness:(CGDirectDisplayID)displayID;
+- (BOOL)autoBrightnessEnabled:(CGDirectDisplayID)displayID;
+- (void)setAutoBrightness:(BOOL)enabled forDisplay:(CGDirectDisplayID)displayID;
+
 - (void)invalidateServiceCache;
 
 @end

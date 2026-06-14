@@ -1,4 +1,5 @@
 #import "DisplayManager.h"
+#import "DDUtil.h"
 #import <AppKit/AppKit.h>
 #import <IOKit/IOKitLib.h>
 #import <IOKit/graphics/IOGraphicsLib.h>
@@ -50,23 +51,9 @@ typedef struct { uint32_t width; uint32_t height; } SLVirtualDisplaySize;
 extern CFDictionaryRef CoreDisplay_DisplayCreateInfoDictionary(CGDirectDisplayID display)
     CF_RETURNS_RETAINED;
 
-static NSError *ddMakeError(DDErrorCode code, NSString *format, ...) NS_FORMAT_FUNCTION(2,3);
-static NSError *ddMakeError(DDErrorCode code, NSString *format, ...) {
-    va_list args;
-    va_start(args, format);
-    NSString *msg = [[NSString alloc] initWithFormat:format arguments:args];
-    va_end(args);
-    return [NSError errorWithDomain:DDErrorDomain code:code
-                 userInfo:@{NSLocalizedDescriptionKey: msg}];
-}
-
 static NSError *ddMakeCGError(CGError cgError, NSString *phase) {
-    return [NSError errorWithDomain:DDErrorDomain
-                               code:DDErrorCGConfigFailed
-                           userInfo:@{
-        NSLocalizedDescriptionKey:
-            [NSString stringWithFormat:@"%@ (CGError %d).", phase, cgError],
-    }];
+    return DDError(DDErrorDomain, DDErrorCGConfigFailed,
+                   @"%@ (CGError %d).", phase, cgError);
 }
 
 static CFArrayRef ddCopyAllModes(CGDirectDisplayID displayID) CF_RETURNS_RETAINED {
@@ -536,7 +523,7 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
 
 - (BOOL)setMode:(DDDisplayMode *)mode forDisplay:(CGDirectDisplayID)displayID error:(NSError **)error {
     if (!mode.modeRef) {
-        if (error) *error = ddMakeError(DDErrorInvalidMode, @"Invalid display mode.");
+        if (error) *error = DDError(DDErrorDomain, DDErrorInvalidMode, @"Invalid display mode.");
         return NO;
     }
 
@@ -593,7 +580,7 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
     Class CfgC  = NSClassFromString(@"SLVirtualDisplayConfiguration");
     Class VDC   = NSClassFromString(@"SLVirtualDisplay");
     if (!ModeC || !SetC || !CfgC || !VDC) {
-        if (error) *error = ddMakeError(DDErrorRequiresMacOS14,
+        if (error) *error = DDError(DDErrorDomain, DDErrorRequiresMacOS14,
             @"SLVirtualDisplay private API not available on this macOS.");
         return nil;
     }
@@ -608,7 +595,7 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
                                                          refreshRate:rate
                                                                error:&modeErr];
     if (!mode) {
-        if (error) *error = ddMakeError(DDErrorVirtualApplyFailed,
+        if (error) *error = DDError(DDErrorDomain, DDErrorVirtualApplyFailed,
             @"SLVirtualDisplayMode init failed: %@", modeErr.localizedDescription);
         return nil;
     }
@@ -621,7 +608,7 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
                  rotations:0
                      error:&setErr];
     if (!settings) {
-        if (error) *error = ddMakeError(DDErrorVirtualApplyFailed,
+        if (error) *error = DDError(DDErrorDomain, DDErrorVirtualApplyFailed,
             @"SLVirtualDisplaySettings init failed: %@", setErr.localizedDescription);
         return nil;
     }
@@ -630,7 +617,7 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
     if (vd) {
         NSError *applyErr = nil;
         if (![vd applySettings:settings error:&applyErr]) {
-            if (error) *error = ddMakeError(DDErrorVirtualApplyFailed,
+            if (error) *error = DDError(DDErrorDomain, DDErrorVirtualApplyFailed,
                 @"applySettings: failed: %@", applyErr.localizedDescription);
             return nil;
         }
@@ -638,13 +625,13 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
     }
 
     if (sourceID == kCGNullDirectDisplay) {
-        if (error) *error = ddMakeError(DDErrorVirtualCreateFailed,
+        if (error) *error = DDError(DDErrorDomain, DDErrorVirtualCreateFailed,
             @"Cannot create shared virtual display without a source panel.");
         return nil;
     }
     CFDictionaryRef info = CoreDisplay_DisplayCreateInfoDictionary(sourceID);
     if (!info) {
-        if (error) *error = ddMakeError(DDErrorVirtualCreateFailed,
+        if (error) *error = DDError(DDErrorDomain, DDErrorVirtualCreateFailed,
             @"CoreDisplay returned no info for source panel 0x%X.", sourceID);
         return nil;
     }
@@ -652,7 +639,7 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
         [CfgC configurationWithDisplayInfo:(__bridge NSDictionary *)info];
     CFRelease(info);
     if (!config) {
-        if (error) *error = ddMakeError(DDErrorVirtualCreateFailed,
+        if (error) *error = DDError(DDErrorDomain, DDErrorVirtualCreateFailed,
             @"configurationWithDisplayInfo: returned nil for panel 0x%X.", sourceID);
         return nil;
     }
@@ -669,18 +656,18 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
     NSError *initErr = nil;
     vd = [[VDC alloc] initWithConfiguration:config error:&initErr];
     if (!vd) {
-        if (error) *error = ddMakeError(DDErrorVirtualCreateFailed,
+        if (error) *error = DDError(DDErrorDomain, DDErrorVirtualCreateFailed,
             @"SLVirtualDisplay init failed: %@", initErr.localizedDescription);
         return nil;
     }
     NSError *applyErr = nil;
     if (![vd applySettings:settings error:&applyErr]) {
-        if (error) *error = ddMakeError(DDErrorVirtualApplyFailed,
+        if (error) *error = DDError(DDErrorDomain, DDErrorVirtualApplyFailed,
             @"applySettings: failed on first create: %@", applyErr.localizedDescription);
         return nil;
     }
     if (vd.displayID == kCGNullDirectDisplay) {
-        if (error) *error = ddMakeError(DDErrorVirtualNoDisplayID,
+        if (error) *error = DDError(DDErrorDomain, DDErrorVirtualNoDisplayID,
             @"SLVirtualDisplay has no valid displayID after apply.");
         return nil;
     }
@@ -710,24 +697,24 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
     @try {
 
     if (!NSClassFromString(@"SLVirtualDisplay")) {
-        deliver(NO, ddMakeError(DDErrorRequiresMacOS14,
+        deliver(NO, DDError(DDErrorDomain, DDErrorRequiresMacOS14,
                                 @"Force HiDPI requires macOS 14 or later."));
         return;
     }
     if (self.forcedPhysical == displayID) {
-        deliver(NO, ddMakeError(DDErrorAlreadyForced,
+        deliver(NO, DDError(DDErrorDomain, DDErrorAlreadyForced,
                                 @"HiDPI is already being forced for this display."));
         return;
     }
     if (self.forcedPhysical != kCGNullDirectDisplay) {
-        deliver(NO, ddMakeError(DDErrorAlreadyForced,
+        deliver(NO, DDError(DDErrorDomain, DDErrorAlreadyForced,
             @"Another display is already forced. Stop it first — this version "
             @"supports one forced display at a time (one CGVirtualDisplay per "
             @"process is an OS-level limit)."));
         return;
     }
     if (!CGDisplayIsActive(displayID)) {
-        deliver(NO, ddMakeError(DDErrorNotForced,
+        deliver(NO, DDError(DDErrorDomain, DDErrorNotForced,
                                 @"Cannot force HiDPI on an inactive display."));
         return;
     }
@@ -748,7 +735,7 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
     } else {
         CGDisplayModeRef curMode = CGDisplayCopyDisplayMode(displayID);
         if (!curMode) {
-            deliver(NO, ddMakeError(DDErrorReadCurrentModeFailed,
+            deliver(NO, DDError(DDErrorDomain, DDErrorReadCurrentModeFailed,
                                     @"Could not read current display mode."));
             return;
         }
@@ -780,7 +767,7 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
     CGDirectDisplayID virtualID = vd.displayID;
 
     if (![self waitForVirtualDisplayOnline:virtualID timeout:kDDVirtualOnlineTimeout]) {
-        deliver(NO, ddMakeError(DDErrorVirtualCreateFailed,
+        deliver(NO, DDError(DDErrorDomain, DDErrorVirtualCreateFailed,
                                 @"Virtual display did not appear online."));
         return;
     }
@@ -792,7 +779,7 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
     } error:NULL];
 
     if (!CGDisplayIsActive(displayID)) {
-        deliver(NO, ddMakeError(DDErrorNotForced,
+        deliver(NO, DDError(DDErrorDomain, DDErrorNotForced,
                                 @"Target display disconnected before the force could be applied."));
         return;
     }
@@ -833,7 +820,7 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
                                                          preForce.modeRef, NULL);
             } error:NULL];
         }
-        deliver(NO, ddMakeError(DDErrorVirtualApplyFailed,
+        deliver(NO, DDError(DDErrorDomain, DDErrorVirtualApplyFailed,
             @"Could not pin the virtual display to the requested logical size — "
             @"pointer coordinates would misalign. Force aborted."));
         return;
@@ -1049,7 +1036,7 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
 
 - (BOOL)stopForcedHiDPIForDisplay:(CGDirectDisplayID)displayID error:(NSError **)error {
     if (self.forcedPhysical != displayID) {
-        if (error) *error = ddMakeError(DDErrorNotForced,
+        if (error) *error = DDError(DDErrorDomain, DDErrorNotForced,
                                         @"HiDPI is not being forced for this display.");
         return NO;
     }

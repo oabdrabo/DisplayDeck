@@ -1,4 +1,5 @@
 #import "WindowTransparency.h"
+#import "DDUtil.h"
 #import <AppKit/AppKit.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -8,11 +9,6 @@
 static NSErrorDomain const kTransparencyErrorDomain = @"com.local.DisplayDisabler.Transparency";
 
 static const uint8_t kSAOpcodeWindowOpacity = 0x07;
-
-static NSError *transparencyError(NSInteger code, NSString *message) {
-    return [NSError errorWithDomain:kTransparencyErrorDomain code:code
-                           userInfo:@{NSLocalizedDescriptionKey: message}];
-}
 
 @implementation DDWindow
 @end
@@ -82,11 +78,6 @@ static NSString *shellQuote(NSString *s) {
             [s stringByReplacingOccurrencesOfString:@"'" withString:@"'\\''"]];
 }
 
-static NSString *appleScriptEscape(NSString *s) {
-    NSString *o = [s stringByReplacingOccurrencesOfString:@"\\" withString:@"\\\\"];
-    return [o stringByReplacingOccurrencesOfString:@"\"" withString:@"\\\""];
-}
-
 - (void)ensureBackendLoaded {
     if ([self reloadSilently]) return;
 
@@ -113,7 +104,7 @@ static NSString *appleScriptEscape(NSString *s) {
         sudoLine, kSALoaderPath];
 
     NSString *source = [NSString stringWithFormat:
-        @"do shell script \"%@\" with administrator privileges", appleScriptEscape(cmd)];
+        @"do shell script \"%@\" with administrator privileges", DDAppleScriptEscape(cmd)];
     NSDictionary *err = nil;
     [[[NSAppleScript alloc] initWithSource:source] executeAndReturnError:&err];
     if (err) NSLog(@"DisplayDisabler: SA install failed: %@", err);
@@ -170,7 +161,7 @@ static NSString *appleScriptEscape(NSString *s) {
 - (BOOL)applyAlpha:(float)alpha toWindowID:(uint32_t)windowID error:(NSError **)error {
     int fd = [self connectedSocketFD];
     if (fd < 0) {
-        if (error) *error = transparencyError(1,
+        if (error) *error = DDError(kTransparencyErrorDomain, 1,
             @"Transparency backend (scripting addition) is not loaded.");
         return NO;
     }
@@ -187,7 +178,7 @@ static NSString *appleScriptEscape(NSString *s) {
     ssize_t sent = send(fd, bytes, length, 0);
     close(fd);
     if (sent != length) {
-        if (error) *error = transparencyError(errno, @"Failed to send to backend.");
+        if (error) *error = DDError(kTransparencyErrorDomain, errno, @"Failed to send to backend.");
         return NO;
     }
     return YES;

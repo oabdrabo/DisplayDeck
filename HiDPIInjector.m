@@ -1,5 +1,6 @@
 #import "HiDPIInjector.h"
 #import "DisplayManager.h"
+#import "DDUtil.h"
 #import <AppKit/AppKit.h>
 #import <IOKit/IOKitLib.h>
 #include <arpa/inet.h>
@@ -17,11 +18,6 @@ static NSString *const kOverridesLibraryRoot =
     @"/Library/Displays/Contents/Resources/Overrides";
 static NSString *const kOverridesSystemRoot =
     @"/System/Library/Displays/Contents/Resources/Overrides";
-
-static NSError *injectorError(NSInteger code, NSString *message) {
-    return [NSError errorWithDomain:kInjectorErrorDomain code:code
-                           userInfo:@{NSLocalizedDescriptionKey: message}];
-}
 
 static NSData *entry8(NSUInteger logicalW, NSUInteger logicalH) {
     uint8_t bytes[8] = {0};
@@ -151,20 +147,14 @@ static NSData *entry8(NSUInteger logicalW, NSUInteger logicalH) {
     return [[NSString alloc] initWithData:xml encoding:NSUTF8StringEncoding];
 }
 
-static NSString *escapeForAppleScript(NSString *s) {
-    NSString *out = [s stringByReplacingOccurrencesOfString:@"\\" withString:@"\\\\"];
-    out = [out stringByReplacingOccurrencesOfString:@"\"" withString:@"\\\""];
-    return out;
-}
-
 - (void)runPrivilegedShell:(NSString *)script
                 completion:(void (^)(BOOL ok, NSError * _Nullable err))completion {
     if (![NSThread isMainThread]) {
-        completion(NO, injectorError(-1,
+        completion(NO, DDError(kInjectorErrorDomain, -1,
             @"runPrivilegedShell must be called on the main thread."));
         return;
     }
-    NSString *escaped = escapeForAppleScript(script);
+    NSString *escaped = DDAppleScriptEscape(script);
     NSString *source = [NSString stringWithFormat:
         @"do shell script \"%@\" with administrator privileges", escaped];
     NSAppleScript *as = [[NSAppleScript alloc] initWithSource:source];
@@ -176,7 +166,7 @@ static NSString *escapeForAppleScript(NSString *s) {
         NSString *msg = errDict[NSAppleScriptErrorMessage] ?: @"Shell script failed";
         NSInteger code = [errDict[NSAppleScriptErrorNumber] integerValue];
         if (code == -128) msg = @"Authorization cancelled.";
-        completion(NO, injectorError(code, msg));
+        completion(NO, DDError(kInjectorErrorDomain, code, @"%@", msg));
     }
 }
 
@@ -184,7 +174,7 @@ static NSString *escapeForAppleScript(NSString *s) {
               resolutions:(NSArray<NSValue *> *)sizes
                completion:(void (^)(BOOL ok, NSError * _Nullable err))completion {
     if (CGDisplayVendorNumber(displayID) == 0 || CGDisplayModelNumber(displayID) == 0) {
-        completion(NO, injectorError(-1,
+        completion(NO, DDError(kInjectorErrorDomain, -1,
             @"Display reports no vendor/product ID; cannot target an override plist."));
         return;
     }
@@ -208,7 +198,7 @@ static NSString *escapeForAppleScript(NSString *s) {
     [self runPrivilegedShell:script completion:^(BOOL ok, NSError *err) {
         if (!ok) { completion(NO, err); return; }
         if (![[NSFileManager defaultManager] fileExistsAtPath:path]) {
-            completion(NO, injectorError(-1,
+            completion(NO, DDError(kInjectorErrorDomain, -1,
                 @"Script ran but the override plist isn't on disk. "
                 @"Check permissions under /Library/Displays."));
             return;

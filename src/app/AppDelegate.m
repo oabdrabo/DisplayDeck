@@ -359,7 +359,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
             [self.displayManager forceHiDPIOptionsForDisplay:display.displayID];
         if (options.count > 0) {
             NSMenuItem *fh = [[NSMenuItem alloc] initWithTitle:@"Force HiDPI" action:nil keyEquivalent:@""];
-            fh.image = ddSymbol(@"arrow.up.left.and.arrow.down.right.magnifyingglass");
+            fh.image = ddSymbol(@"arrow.up.left.and.arrow.down.right");
             fh.submenu = [self buildForceHiDPISubmenuForDisplay:display.displayID options:options];
             [menu addItem:fh];
         }

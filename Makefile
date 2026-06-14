@@ -76,6 +76,11 @@ install: all
 uninstall:
 	@rm -rf "/Applications/$(BUNDLE)"
 	@echo "Removed /Applications/$(BUNDLE)"
+	@if [ -e /Library/DisplayDisabler ] || [ -e /etc/sudoers.d/displaydisabler ]; then \
+	    echo "Removing scripting addition (requires admin)…"; \
+	    sudo rm -rf /Library/DisplayDisabler /etc/sudoers.d/displaydisabler && \
+	    echo "Removed scripting addition + sudoers entry"; \
+	fi
 
 clean:
 	@rm -f $(OBJECTS) $(DEPS) $(EXECUTABLE) AppIcon.icns

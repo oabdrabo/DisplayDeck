@@ -214,6 +214,13 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         return;
     }
     if (!display.isActive) {
+        if (display.logicalWidth > 0) {
+            NSMutableString *line = [NSMutableString stringWithFormat:@"   %@",
+                ddLogicalString(display.logicalWidth, display.logicalHeight)];
+            if (display.isHiDPI) [line appendString:@"  HiDPI"];
+            if (display.refreshRate > 0) [line appendFormat:@" · %.0fHz", display.refreshRate];
+            [self addLabelToMenu:menu title:line];
+        }
         [menu addItem:[self actionItem:@"Enable"
                                 action:@selector(enableDisplay:) displayID:display.displayID]];
         return;
@@ -292,6 +299,15 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         if (isCurrent) item.state = NSControlStateValueOn;
         return item;
     };
+
+    NSMenuItem *colHeader = [[NSMenuItem alloc] initWithTitle:@"" action:nil keyEquivalent:@""];
+    colHeader.attributedTitle = [[NSAttributedString alloc]
+        initWithString:[NSString stringWithFormat:@"%@%@",
+                        ddPad(@"Looks Like", kModeColLogical), @"Rate"]
+            attributes:@{NSFontAttributeName: monoBold}];
+    colHeader.enabled = NO;
+    [submenu addItem:colHeader];
+    [submenu addItem:[NSMenuItem separatorItem]];
 
     NSMutableArray<DDDisplayMode *> *panelOpts = [NSMutableArray array];
     NSMutableArray<DDDisplayMode *> *synthOpts = [NSMutableArray array];

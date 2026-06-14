@@ -14,6 +14,7 @@ SOURCES    = src/main.m \
              src/common/DDUtil.m \
              src/display/DisplayManager.m src/display/HiDPIInjector.m \
              src/display/Brightness.m src/display/BrightnessBooster.m \
+             src/display/ColorTemperature.m \
              src/power/Caffeine.m \
              src/transparency/WindowTransparency.m
 OBJECTS    = $(SOURCES:.m=.o)

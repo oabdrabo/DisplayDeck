@@ -4,6 +4,7 @@
 #import "HiDPIInjector.h"
 #import "WindowTransparency.h"
 #import "BrightnessBooster.h"
+#import "ColorTemperature.h"
 #import "Caffeine.h"
 #import <ServiceManagement/ServiceManagement.h>
 #import <UserNotifications/UserNotifications.h>
@@ -79,6 +80,8 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
     [WindowTransparency shared].frostedBlur = [self pref:kFrostedBlur];
     [[WindowTransparency shared] ensureBackendLoaded];
 
+    [[ColorTemperature shared] reapply];
+
     UNUserNotificationCenter.currentNotificationCenter.delegate = self;
 
     [self setupStatusItems];
@@ -92,6 +95,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
         [strongSelf.displayManager realignForcedDisplay];
         [[Brightness shared] invalidateServiceCache];
         [[BrightnessBooster shared] reapply];
+        [[ColorTemperature shared] reapply];
         [strongSelf rebuildMenu];
         [strongSelf performAutoDisableIfNeeded];
         [strongSelf performAutoReenableIfNeeded];
@@ -102,6 +106,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
 
 - (void)applicationWillTerminate:(NSNotification *)notification {
     (void)notification;
+    [[ColorTemperature shared] restoreAll];
     [self.displayManager cleanUpAllVirtualDisplays];
     [self.displayManager stopMonitoring];
 }
@@ -343,6 +348,13 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
             [menu addItem:auto_];
         }
     }
+    int warmth = (int)lroundf([[ColorTemperature shared]
+                               warmthForDisplay:display.displayID] * 100.0f);
+    [menu addItem:[self sliderRowWithLabel:@"Warmth" icon:ddSymbol(@"thermometer.sun")
+                                   percent:warmth minPct:0
+                                    maxPct:100 continuous:YES tag:display.displayID
+                                    action:@selector(warmthSliderChanged:)
+                               pinnedState:-1]];
     if ([self pref:kShowResolutions]) {
         NSArray<DDDisplayMode *> *modes = [self.displayManager modesForDisplay:display.displayID];
         size_t lw = display.logicalWidth ?: display.pixelWidth;
@@ -632,6 +644,12 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
     BOOL newState = ![[Brightness shared] autoBrightnessEnabled:did];
     [[Brightness shared] setAutoBrightness:newState forDisplay:did];
     sender.state = newState ? NSControlStateValueOn : NSControlStateValueOff;
+}
+
+- (void)warmthSliderChanged:(NSSlider *)sender {
+    [self syncSliderLabel:sender];
+    [[ColorTemperature shared] setWarmth:sender.floatValue
+                              forDisplay:(CGDirectDisplayID)sender.tag];
 }
 
 - (void)brightnessSliderChanged:(NSSlider *)sender {

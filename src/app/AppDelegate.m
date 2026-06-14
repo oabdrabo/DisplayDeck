@@ -17,10 +17,6 @@ static NSString * const kFrostedBlur        = @"FrostedBlur";
 
 static NSString * const kAutoManageNotifID = @"auto-manage";
 
-static const CGFloat kSwitchRowWidth   = 290;
-static const CGFloat kSwitchRowHeight  = 28;
-static const CGFloat kSwitchRowPad     = 18;
-static const CGFloat kSwitchLabelGap   = 8;
 
 static const NSUInteger kModeColLogical = 17;
 static const NSUInteger kModeColType    = 10;
@@ -224,6 +220,8 @@ static NSString *ddLogicalString(size_t w, size_t h) {
 - (void)addKeepAwakeSectionToMenu:(NSMenu *)menu {
     Caffeine *caf = [Caffeine shared];
 
+    [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Keep Awake"]];
+
     if (caf.active && caf.expiry) {
         NSDateFormatter *df = [[NSDateFormatter alloc] init];
         df.timeStyle = NSDateFormatterShortStyle;
@@ -247,8 +245,6 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     }
     forItem.submenu = durMenu;
     [menu addItem:forItem];
-
-    [menu addItem:[NSMenuItem separatorItem]];
 }
 
 - (void)keepAwakeFor:(NSMenuItem *)sender {
@@ -624,26 +620,25 @@ static NSString *ddLogicalString(size_t w, size_t h) {
 
     [menu removeAllItems];
 
-    [menu addItem:[self switchRowWithTitle:
-        @"Turn off laptop screen when external monitor is connected"
-            state:[self pref:kAutoManage] identifier:kAutoManage
-           action:@selector(switchToggled:)]];
-    [menu addItem:[NSMenuItem separatorItem]];
+    [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"General"]];
+    [menu addItem:[self checkItemWithTitle:@"Show notifications" key:kShowNotifications]];
+    [menu addItem:[self checkItemWithTitle:@"Confirm before disabling" key:kConfirmDisable]];
+    [menu addItem:[self checkItemWithTitle:@"Show all resolutions" key:kShowResolutions]];
 
-    [menu addItem:[self checkItemWithTitle:@"Show notifications"
-                                       key:kShowNotifications]];
-    [menu addItem:[self checkItemWithTitle:@"Ask before disabling a display"
-                                       key:kConfirmDisable]];
-    [menu addItem:[self checkItemWithTitle:@"Show all resolutions"
-                                       key:kShowResolutions]];
-    [menu addItem:[self checkItemWithTitle:@"Frosted glass (blur behind transparent windows)"
-                                       key:kFrostedBlur]];
-    [menu addItem:[NSMenuItem separatorItem]];
+    [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Display"]];
+    [menu addItem:[self checkItemWithTitle:@"Turn off built-in with external display"
+                                       key:kAutoManage]];
 
-    BOOL loginEnabled = (SMAppService.mainAppService.status == SMAppServiceStatusEnabled);
-    [menu addItem:[self switchRowWithTitle:@"Launch at Login"
-            state:loginEnabled identifier:nil
-           action:@selector(loginSwitchToggled:)]];
+    [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Transparency"]];
+    [menu addItem:[self checkItemWithTitle:@"Frosted glass blur" key:kFrostedBlur]];
+
+    [menu addItem:[NSMenuItem separatorItem]];
+    NSMenuItem *login = [[NSMenuItem alloc] initWithTitle:@"Launch at Login"
+        action:@selector(toggleLoginItem:) keyEquivalent:@""];
+    login.target = self;
+    login.state = (SMAppService.mainAppService.status == SMAppServiceStatusEnabled)
+        ? NSControlStateValueOn : NSControlStateValueOff;
+    [menu addItem:login];
 }
 
 - (NSMenuItem *)checkItemWithTitle:(NSString *)title key:(NSString *)key {
@@ -653,57 +648,6 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     item.target = self;
     item.representedObject = key;
     item.state = [self pref:key] ? NSControlStateValueOn : NSControlStateValueOff;
-    return item;
-}
-
-- (NSMenuItem *)switchRowWithTitle:(NSString *)title
-                             state:(BOOL)state
-                        identifier:(nullable NSString *)identifier
-                            action:(SEL)action {
-    NSMenuItem *item = [[NSMenuItem alloc] init];
-
-    NSSwitch *sw = [[NSSwitch alloc] init];
-    sw.controlSize = NSControlSizeMini;
-    sw.translatesAutoresizingMaskIntoConstraints = YES;
-    [sw sizeToFit];
-    CGFloat switchWidth  = sw.frame.size.width;
-    CGFloat switchHeight = sw.frame.size.height;
-
-    CGFloat labelWidth = kSwitchRowWidth - (kSwitchRowPad * 2) - switchWidth - kSwitchLabelGap;
-    NSFont *font = [NSFont menuFontOfSize:13];
-    NSRect textRect = [title boundingRectWithSize:NSMakeSize(labelWidth, CGFLOAT_MAX)
-                                          options:NSStringDrawingUsesLineFragmentOrigin
-                                       attributes:@{NSFontAttributeName: font}];
-    CGFloat labelHeight = ceil(textRect.size.height);
-    CGFloat rowHeight = MAX(kSwitchRowHeight, labelHeight + 10);
-
-    NSView *row = [[NSView alloc] initWithFrame:
-                   NSMakeRect(0, 0, kSwitchRowWidth, rowHeight)];
-    row.translatesAutoresizingMaskIntoConstraints = YES;
-    row.autoresizesSubviews = NO;
-
-    sw.frame = NSMakeRect(kSwitchRowWidth - kSwitchRowPad - switchWidth,
-                          (rowHeight - switchHeight) / 2,
-                          switchWidth, switchHeight);
-    sw.state = state ? NSControlStateValueOn : NSControlStateValueOff;
-    sw.target = self;
-    sw.action = action;
-    sw.identifier = identifier;
-    sw.accessibilityLabel = title;
-    [row addSubview:sw];
-
-    NSTextField *label = [NSTextField labelWithString:title];
-    label.translatesAutoresizingMaskIntoConstraints = YES;
-    label.font = font;
-    label.lineBreakMode = NSLineBreakByWordWrapping;
-    label.maximumNumberOfLines = 0;
-    label.preferredMaxLayoutWidth = labelWidth;
-    label.frame = NSMakeRect(kSwitchRowPad,
-                             (rowHeight - labelHeight) / 2,
-                             labelWidth, labelHeight);
-    [row addSubview:label];
-
-    item.view = row;
     return item;
 }
 
@@ -984,16 +928,7 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     if (asErr) NSLog(@"DisplayDisabler: restart script error: %@", asErr);
 }
 
-- (void)switchToggled:(NSSwitch *)sender {
-    NSString *key = sender.identifier;
-    [self flipPref:key];
-
-    if ([key isEqualToString:kAutoManage] && [self pref:kAutoManage]) {
-        [self performAutoDisableIfNeeded];
-    }
-}
-
-- (void)loginSwitchToggled:(NSSwitch *)sender {
+- (void)toggleLoginItem:(NSMenuItem *)sender {
     SMAppService *service = [SMAppService mainAppService];
     NSError *error = nil;
 
@@ -1019,6 +954,9 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     [self flipPref:key];
     sender.state = [self pref:key] ? NSControlStateValueOn : NSControlStateValueOff;
     if ([key isEqualToString:kShowResolutions]) [self rebuildMenu];
+    if ([key isEqualToString:kAutoManage] && [self pref:kAutoManage]) {
+        [self performAutoDisableIfNeeded];
+    }
     if ([key isEqualToString:kFrostedBlur]) {
         [WindowTransparency shared].frostedBlur = [self pref:kFrostedBlur];
         [[WindowTransparency shared] reapplyBlurForAllWindows];

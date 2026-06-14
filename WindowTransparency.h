@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic) pid_t pid;
 @property (nonatomic, copy) NSString *name;
 @property (nonatomic, strong) NSArray<DDWindow *> *windows;
+@property (nonatomic) BOOL pinned;
 @end
 
 @interface WindowTransparency : NSObject
@@ -29,6 +30,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)setAlphaForAllWindows:(float)alpha error:(NSError **)error;
 - (BOOL)resetAllWindows:(NSError **)error;
 - (void)reapplyBlurForAllWindows;
+
+- (BOOL)setPinned:(BOOL)pinned forApp:(pid_t)pid error:(NSError **)error;
 
 @end
 

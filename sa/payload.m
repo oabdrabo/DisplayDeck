@@ -15,10 +15,12 @@
 #define SA_SOCKET_BUFF_LEN       0x1000
 #define SA_OPCODE_WINDOW_OPACITY 0x07
 #define SA_OPCODE_WINDOW_BLUR    0x08
+#define SA_OPCODE_WINDOW_LEVEL   0x09
 
 extern int     SLSMainConnectionID(void);
 extern CGError SLSSetWindowAlpha(int cid, uint32_t wid, float alpha);
 extern CGError SLSSetWindowBackgroundBlurRadius(int cid, uint32_t wid, int radius);
+extern CGError SLSSetWindowLevel(int cid, uint32_t wid, int level);
 
 #define unpack(v) memcpy(&v, message, sizeof(v)); message += sizeof(v)
 
@@ -43,10 +45,20 @@ static void do_window_blur(char *message) {
     SLSSetWindowBackgroundBlurRadius(SLSMainConnectionID(), wid, radius);
 }
 
+static void do_window_level(char *message) {
+    uint32_t wid;
+    unpack(wid);
+    if (!wid) return;
+    int level;
+    unpack(level);
+    SLSSetWindowLevel(SLSMainConnectionID(), wid, level);
+}
+
 static void handle_message(char *message) {
     int op = *message++;
     if (op == SA_OPCODE_WINDOW_OPACITY) do_window_opacity(message);
     else if (op == SA_OPCODE_WINDOW_BLUR) do_window_blur(message);
+    else if (op == SA_OPCODE_WINDOW_LEVEL) do_window_level(message);
 }
 
 static inline bool read_message(int sockfd, char *message) {

@@ -1,0 +1,16 @@
+#import <Foundation/Foundation.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface WindowPiP : NSObject
+
++ (instancetype)shared;
+
+- (BOOL)hasAccessibility;
+- (void)requestAccessibility;
+- (BOOL)isActiveForApp:(pid_t)pid;
+- (BOOL)toggleForApp:(pid_t)pid;
+
+@end
+
+NS_ASSUME_NONNULL_END

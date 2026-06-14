@@ -5,10 +5,12 @@ BUNDLE     = $(APP_NAME).app
 CC         = clang
 CFLAGS     = -fobjc-arc -Wall -Wextra -O2 -fstack-protector-strong \
              -mmacosx-version-min=14.0 -MMD -MP
-INCLUDES   = -Isrc/app -Isrc/common -Isrc/display -Isrc/power -Isrc/transparency
+INCLUDES   = -Isrc/app -Isrc/common -Isrc/display -Isrc/power \
+             -Isrc/transparency -Isrc/window
 FRAMEWORKS = -framework Cocoa -framework CoreGraphics -framework IOKit \
              -framework ServiceManagement -framework UserNotifications \
-             -framework CoreDisplay -framework Metal -framework QuartzCore
+             -framework CoreDisplay -framework Metal -framework QuartzCore \
+             -framework ApplicationServices
 SOURCES    = src/main.m \
              src/app/AppDelegate.m \
              src/common/DDUtil.m \
@@ -16,7 +18,8 @@ SOURCES    = src/main.m \
              src/display/Brightness.m src/display/BrightnessBooster.m \
              src/display/ColorTemperature.m \
              src/power/Caffeine.m \
-             src/transparency/WindowTransparency.m
+             src/transparency/WindowTransparency.m \
+             src/window/WindowPiP.m
 OBJECTS    = $(SOURCES:.m=.o)
 DEPS       = $(SOURCES:.m=.d)
 EXECUTABLE = $(APP_NAME)

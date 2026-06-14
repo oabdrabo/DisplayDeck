@@ -20,12 +20,18 @@ extern CFDictionaryRef CoreDisplay_DisplayCreateInfoDictionary(CGDirectDisplayID
 typedef int (*DSSetFn)(CGDirectDisplayID, float);
 typedef int (*DSGetFn)(CGDirectDisplayID, float *);
 typedef int (*DSCanChangeFn)(CGDirectDisplayID);
+typedef int (*DSHasALCFn)(CGDirectDisplayID);
+typedef int (*DSGetALCFn)(CGDirectDisplayID, bool *);
+typedef int (*DSSetALCFn)(CGDirectDisplayID, bool);
 
 typedef struct {
     DSSetFn         set;
     DSSetFn         setSmooth;
     DSGetFn         get;
     DSCanChangeFn   canChange;
+    DSHasALCFn      hasALC;
+    DSGetALCFn      getALC;
+    DSSetALCFn      setALC;
 } DSBrightnessFns;
 
 static DSBrightnessFns dsBrightness(void) {
@@ -40,6 +46,9 @@ static DSBrightnessFns dsBrightness(void) {
         f.setSmooth = (DSSetFn)dlsym(h, "DisplayServicesSetBrightnessSmooth");
         f.get       = (DSGetFn)dlsym(h, "DisplayServicesGetBrightness");
         f.canChange = (DSCanChangeFn)dlsym(h, "DisplayServicesCanChangeBrightness");
+        f.hasALC    = (DSHasALCFn)dlsym(h, "DisplayServicesHasAmbientLightCompensation");
+        f.getALC    = (DSGetALCFn)dlsym(h, "DisplayServicesAmbientLightCompensationEnabled");
+        f.setALC    = (DSSetALCFn)dlsym(h, "DisplayServicesEnableAmbientLightCompensation");
     });
     return f;
 }
@@ -208,6 +217,23 @@ static const int kDDCAttempts          = 2;
 
 - (void)invalidateServiceCache {
     [self.services removeAllObjects];
+}
+
+- (BOOL)supportsAutoBrightness:(CGDirectDisplayID)displayID {
+    DSBrightnessFns f = dsBrightness();
+    return f.hasALC && f.getALC && f.setALC && f.hasALC(displayID);
+}
+
+- (BOOL)autoBrightnessEnabled:(CGDirectDisplayID)displayID {
+    DSBrightnessFns f = dsBrightness();
+    if (!f.getALC) return NO;
+    bool enabled = false;
+    return f.getALC(displayID, &enabled) == 0 && enabled;
+}
+
+- (void)setAutoBrightness:(BOOL)enabled forDisplay:(CGDirectDisplayID)displayID {
+    DSBrightnessFns f = dsBrightness();
+    if (f.setALC) f.setALC(displayID, enabled);
 }
 
 - (BOOL)setBrightnessPercent:(uint8_t)percent

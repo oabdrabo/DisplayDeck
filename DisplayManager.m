@@ -857,6 +857,15 @@ static void displayReconfigCallback(CGDirectDisplayID display __unused,
                                 m.logicalWidth, m.logicalHeight]];
     }
 
+    // Synthetic options are realised via a virtual display pinned to the source
+    // panel's current refresh rate, so report that rate rather than a blank.
+    double currentRate = 0;
+    CGDisplayModeRef curMode = CGDisplayCopyDisplayMode(displayID);
+    if (curMode) {
+        currentRate = CGDisplayModeGetRefreshRate(curMode);
+        CGDisplayModeRelease(curMode);
+    }
+
     for (size_t i = 0; i < kDDHiDPIScaleCount; i++) {
         size_t lw = (size_t)round(physical.width  * kDDHiDPIScales[i] / 2.0) * 2;
         size_t lh = (size_t)round(physical.height * kDDHiDPIScales[i] / 2.0) * 2;
@@ -870,7 +879,7 @@ static void displayReconfigCallback(CGDirectDisplayID display __unused,
         synth.pixelHeight   = lh;
         synth.logicalWidth  = lw;
         synth.logicalHeight = lh;
-        synth.refreshRate   = 0;
+        synth.refreshRate   = currentRate;
         synth.isHiDPI       = NO;
         synth.modeRef       = NULL;
         [options addObject:synth];

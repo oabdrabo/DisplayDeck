@@ -174,7 +174,10 @@ static NSError *brightnessError(NSInteger code, NSString *message) {
                              forDisplay:(CGDirectDisplayID)displayID
                                   error:(NSError **)error {
     DSBrightnessFns f = dsBrightness();
-    DSSetFn setFn = f.setSmooth ?: f.set;
+    // Prefer the plain setter: DisplayServicesSetBrightnessSmooth is a silent
+    // no-op on recent macOS (returns success but doesn't change brightness),
+    // while DisplayServicesSetBrightness works.
+    DSSetFn setFn = f.set ?: f.setSmooth;
     if (!setFn) {
         if (error) *error = brightnessError(-1,
             @"DisplayServices is unavailable on this macOS version.");

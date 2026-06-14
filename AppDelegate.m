@@ -152,21 +152,15 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     menu.autoenablesItems = NO;
 
     NSArray<DDDisplayInfo *> *displays = [self.displayManager allDisplays];
-    NSUInteger activeCount = 0;
     BOOL anyDisabled = NO;
     for (DDDisplayInfo *d in displays) {
-        BOOL effectivelyActive = d.isActive ||
-            [self.displayManager isHiDPIForcedForDisplay:d.displayID];
-        if (effectivelyActive) activeCount++;
-        else                   anyDisabled = YES;
+        if (!d.isActive && ![self.displayManager isHiDPIForcedForDisplay:d.displayID])
+            anyDisabled = YES;
     }
     [self updateStatusIcon:anyDisabled];
 
-    [menu addItem:[NSMenuItem sectionHeaderWithTitle:
-        [NSString stringWithFormat:@"Displays — %lu of %lu active",
-         (unsigned long)activeCount, (unsigned long)displays.count]]];
     for (DDDisplayInfo *display in displays) {
-        [self addDisplayRow:display toMenu:menu];
+        [self addDisplaySectionToMenu:menu display:display];
     }
 
     [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Transparency"]];
@@ -198,52 +192,44 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     return item;
 }
 
-- (void)addDisplayRow:(DDDisplayInfo *)display toMenu:(NSMenu *)menu {
+- (void)addDisplaySectionToMenu:(NSMenu *)menu display:(DDDisplayInfo *)display {
     BOOL forced = [self.displayManager isHiDPIForcedForDisplay:display.displayID];
-    NSMutableString *title = [NSMutableString stringWithFormat:@"  %@", display.name];
-    if (display.isActive && display.pixelWidth > 0) {
-        [title appendFormat:@"   %@", ddLogicalString(display.pixelWidth, display.pixelHeight)];
-    }
-    NSString *state = forced ? @"HiDPI" : (display.isActive ? @"on" : @"off");
-    [title appendFormat:@"   %@", state];
-
-    NSMenuItem *row = [[NSMenuItem alloc] initWithTitle:title action:nil keyEquivalent:@""];
-    row.submenu = [self displaySubmenuFor:display forced:forced];
-    [menu addItem:row];
-}
-
-- (NSMenu *)displaySubmenuFor:(DDDisplayInfo *)display forced:(BOOL)forced {
-    NSMenu *m = [[NSMenu alloc] init];
-    m.autoenablesItems = NO;
 
     NSMutableArray<NSString *> *tags = [NSMutableArray array];
-    if (forced)                 [tags addObject:@"HiDPI forced"];
-    else if (!display.isActive) [tags addObject:@"disabled"];
-    if (display.isBuiltIn)      [tags addObject:@"built-in"];
-    if (display.isMain)         [tags addObject:@"main"];
+    if (display.isActive && display.pixelWidth > 0)
+        [tags addObject:ddLogicalString(display.pixelWidth, display.pixelHeight)];
     if (display.isActive && display.refreshRate > 0)
         [tags addObject:[NSString stringWithFormat:@"%.0fHz", display.refreshRate]];
-    if (tags.count > 0) {
-        [self addLabelToMenu:m title:[tags componentsJoinedByString:@" \u00B7 "]];
-        [m addItem:[NSMenuItem separatorItem]];
-    }
+    [tags addObject:(forced ? @"HiDPI" : (display.isActive ? @"on" : @"off"))];
+    if (display.isBuiltIn) [tags addObject:@"built-in"];
+    if (display.isMain)    [tags addObject:@"main"];
+    [menu addItem:[NSMenuItem sectionHeaderWithTitle:
+        [NSString stringWithFormat:@"%@ \u2014 %@", display.name,
+         [tags componentsJoinedByString:@" \u00B7 "]]]];
 
     if (forced) {
-        [m addItem:[self actionItem:@"Stop Forced HiDPI"
-                             action:@selector(stopForcedHiDPI:) displayID:display.displayID]];
-        return m;
+        [menu addItem:[self actionItem:@"Stop Forced HiDPI"
+                                action:@selector(stopForcedHiDPI:) displayID:display.displayID]];
+        return;
     }
     if (!display.isActive) {
-        [m addItem:[self actionItem:@"Enable"
-                             action:@selector(enableDisplay:) displayID:display.displayID]];
-        return m;
+        [menu addItem:[self actionItem:@"Enable"
+                                action:@selector(enableDisplay:) displayID:display.displayID]];
+        return;
     }
 
+    if ([[Brightness shared] supportsBrightness:display.displayID]) {
+        int b = [[Brightness shared] brightnessPercentForDisplay:display.displayID];
+        if (b < 0) b = 100;
+        [menu addItem:[self sliderRowWithLabel:@"Brightness" percent:b minPct:10
+                                    continuous:NO tag:display.displayID
+                                        action:@selector(brightnessSliderChanged:)]];
+    }
     if ([self pref:kShowResolutions]) {
         NSArray<DDDisplayMode *> *modes = [self.displayManager modesForDisplay:display.displayID];
         NSMenuItem *res = [[NSMenuItem alloc] initWithTitle:@"Resolution" action:nil keyEquivalent:@""];
         res.submenu = [self buildModesSubmenuForDisplay:display.displayID modes:modes];
-        [m addItem:res];
+        [menu addItem:res];
     }
     if (NSClassFromString(@"CGVirtualDisplay") != nil) {
         NSArray<DDDisplayMode *> *options =
@@ -251,28 +237,19 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         if (options.count > 0) {
             NSMenuItem *fh = [[NSMenuItem alloc] initWithTitle:@"Force HiDPI" action:nil keyEquivalent:@""];
             fh.submenu = [self buildForceHiDPISubmenuForDisplay:display.displayID options:options];
-            [m addItem:fh];
+            [menu addItem:fh];
         }
-    }
-    if ([[Brightness shared] supportsBrightness:display.displayID]) {
-        int b = [[Brightness shared] brightnessPercentForDisplay:display.displayID];
-        if (b < 0) b = 100;
-        [m addItem:[self sliderRowWithLabel:@"Brightness" percent:b minPct:10
-                                 continuous:NO tag:display.displayID
-                                     action:@selector(brightnessSliderChanged:)]];
     }
 
     BOOL installed = [[HiDPIInjector shared] isInstalledForDisplay:display.displayID];
-    [m addItem:[self actionItem:(installed
-                                 ? @"Remove Crisp HiDPI Overrides\u2026"
-                                 : @"Install Crisp HiDPI (admin + reboot)\u2026")
-                         action:(installed ? @selector(uninstallCrispHiDPI:)
-                                           : @selector(installCrispHiDPI:))
-                      displayID:display.displayID]];
-    [m addItem:[NSMenuItem separatorItem]];
-    [m addItem:[self actionItem:@"Disable"
-                         action:@selector(disableDisplay:) displayID:display.displayID]];
-    return m;
+    [menu addItem:[self actionItem:(installed
+                                    ? @"Remove Crisp HiDPI Overrides\u2026"
+                                    : @"Install Crisp HiDPI (admin + reboot)\u2026")
+                            action:(installed ? @selector(uninstallCrispHiDPI:)
+                                              : @selector(installCrispHiDPI:))
+                         displayID:display.displayID]];
+    [menu addItem:[self actionItem:@"Disable"
+                            action:@selector(disableDisplay:) displayID:display.displayID]];
 }
 
 - (NSMenu *)buildForceHiDPISubmenuForDisplay:(CGDirectDisplayID)displayID

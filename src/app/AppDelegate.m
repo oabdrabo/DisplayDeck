@@ -44,6 +44,15 @@ static NSImage *ddSymbol(NSString *name) {
     return img;
 }
 
+static NSImage *ddTintedSymbol(NSString *name, NSColor *color) {
+    NSImageSymbolConfiguration *cfg = [[NSImageSymbolConfiguration
+        configurationWithPointSize:12 weight:NSFontWeightSemibold]
+        configurationByApplyingConfiguration:
+            [NSImageSymbolConfiguration configurationWithPaletteColors:@[color]]];
+    return [[NSImage imageWithSystemSymbolName:name accessibilityDescription:nil]
+            imageWithSymbolConfiguration:cfg];
+}
+
 static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *tabs,
                                      NSFont *font, NSColor *color) {
     NSMutableParagraphStyle *ps = [[NSMutableParagraphStyle alloc] init];
@@ -332,21 +341,18 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
         int maxPct = (int)lroundf([[BrightnessBooster shared]
                                    maxBoostForDisplay:display.displayID] * 100.0f);
         if (maxPct < 100) maxPct = 100;
+        NSButton *autoToggle = nil;
+        if ([[Brightness shared] supportsAutoBrightness:display.displayID]) {
+            autoToggle = [self rowToggleWithSymbol:@"a.circle" onSymbol:@"a.circle.fill"
+                state:[[Brightness shared] autoBrightnessEnabled:display.displayID]
+                  tag:(NSInteger)display.displayID
+               action:@selector(toggleAutoBrightness:) tooltip:@"Auto-brightness"];
+        }
         [menu addItem:[self sliderRowWithLabel:@"Brightness" icon:ddSymbol(@"sun.max")
                                        percent:shown minPct:10
                                         maxPct:maxPct continuous:YES tag:display.displayID
                                         action:@selector(brightnessSliderChanged:)
-                                   pinnedState:-1]];
-        if ([[Brightness shared] supportsAutoBrightness:display.displayID]) {
-            NSMenuItem *auto_ = [[NSMenuItem alloc] initWithTitle:@"Auto-brightness"
-                action:@selector(toggleAutoBrightness:) keyEquivalent:@""];
-            auto_.target = self;
-            auto_.image = ddSymbol(@"sun.max");
-            auto_.tag = (NSInteger)display.displayID;
-            auto_.state = [[Brightness shared] autoBrightnessEnabled:display.displayID]
-                ? NSControlStateValueOn : NSControlStateValueOff;
-            [menu addItem:auto_];
-        }
+                                     accessory:autoToggle]];
     }
     int warmth = (int)lroundf([[ColorTemperature shared]
                                warmthForDisplay:display.displayID] * 100.0f);
@@ -354,7 +360,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
                                    percent:warmth minPct:0
                                     maxPct:100 continuous:YES tag:display.displayID
                                     action:@selector(warmthSliderChanged:)
-                               pinnedState:-1]];
+                                 accessory:nil]];
     if ([self pref:kShowResolutions]) {
         NSArray<DDDisplayMode *> *modes = [self.displayManager modesForDisplay:display.displayID];
         size_t lw = display.logicalWidth ?: display.pixelWidth;
@@ -476,11 +482,14 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
         }
         NSImage *appIcon = [[NSRunningApplication
             runningApplicationWithProcessIdentifier:app.pid] icon];
+        NSButton *pin = [self rowToggleWithSymbol:@"pin" onSymbol:@"pin.fill"
+            state:app.pinned tag:app.pid
+           action:@selector(togglePinApp:) tooltip:@"Keep on top"];
         [menu addItem:[self sliderRowWithLabel:app.name icon:appIcon
                                        percent:pct minPct:20
                                         maxPct:100 continuous:YES tag:app.pid
                                         action:@selector(opacitySliderChanged:)
-                                   pinnedState:(app.pinned ? 1 : 0)]];
+                                     accessory:pin]];
     }
 
     [menu addItem:[NSMenuItem separatorItem]];
@@ -488,7 +497,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
                                    percent:100 minPct:20
                                     maxPct:100 continuous:YES tag:0
                                     action:@selector(opacitySliderChanged:)
-                               pinnedState:-1]];
+                                 accessory:nil]];
     NSMenuItem *reset = [[NSMenuItem alloc]
         initWithTitle:@"Reset all (100%)"
                action:@selector(resetAllTransparency:) keyEquivalent:@""];
@@ -497,14 +506,23 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
     [menu addItem:reset];
 }
 
-- (void)stylePinButton:(NSButton *)b pinned:(BOOL)pinned {
-    NSImageSymbolConfiguration *cfg =
-        [NSImageSymbolConfiguration configurationWithPointSize:11 weight:NSFontWeightSemibold];
-    b.image = [[NSImage imageWithSystemSymbolName:(pinned ? @"pin.fill" : @"pin")
-                            accessibilityDescription:@"Keep on top"]
-               imageWithSymbolConfiguration:cfg];
-    b.contentTintColor = pinned ? [NSColor controlAccentColor] : [NSColor tertiaryLabelColor];
-    b.state = pinned ? NSControlStateValueOn : NSControlStateValueOff;
+- (NSButton *)rowToggleWithSymbol:(NSString *)offSymbol
+                         onSymbol:(NSString *)onSymbol
+                            state:(BOOL)on
+                              tag:(NSInteger)tag
+                           action:(SEL)action
+                          tooltip:(NSString *)tooltip {
+    NSButton *b = [NSButton buttonWithImage:[NSImage new] target:self action:action];
+    b.bordered = NO;
+    b.imagePosition = NSImageOnly;
+    [b setButtonType:NSButtonTypePushOnPushOff];
+    b.image = ddTintedSymbol(offSymbol, [NSColor tertiaryLabelColor]);
+    b.alternateImage = ddTintedSymbol(onSymbol, [NSColor controlAccentColor]);
+    b.state = on ? NSControlStateValueOn : NSControlStateValueOff;
+    b.tag = tag;
+    b.toolTip = tooltip;
+    b.translatesAutoresizingMaskIntoConstraints = NO;
+    return b;
 }
 
 - (NSMenuItem *)sliderRowWithLabel:(NSString *)label
@@ -515,7 +533,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
                         continuous:(BOOL)continuous
                                tag:(NSInteger)tag
                             action:(SEL)action
-                       pinnedState:(int)pinnedState {
+                         accessory:(NSButton *)accessory {
     NSView *row = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, kSliderRowWidth, 24)];
 
     NSImageView *iconView = nil;
@@ -556,19 +574,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
     [row addSubview:value];
     objc_setAssociatedObject(slider, kDDPctLabelKey, value, OBJC_ASSOCIATION_ASSIGN);
 
-    NSButton *pin = nil;
-    if (pinnedState >= 0) {
-        pin = [NSButton buttonWithImage:[NSImage new] target:self
-                                 action:@selector(togglePinApp:)];
-        pin.bordered = NO;
-        pin.imagePosition = NSImageOnly;
-        [pin setButtonType:NSButtonTypePushOnPushOff];
-        pin.tag = tag;
-        pin.toolTip = @"Keep on top";
-        pin.translatesAutoresizingMaskIntoConstraints = NO;
-        [self stylePinButton:pin pinned:(pinnedState == 1)];
-        [row addSubview:pin];
-    }
+    if (accessory) [row addSubview:accessory];
 
     NSMutableArray<NSLayoutConstraint *> *constraints = [@[
         [row.heightAnchor constraintEqualToConstant:24],
@@ -581,12 +587,12 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
         [value.widthAnchor constraintGreaterThanOrEqualToConstant:30],
     ] mutableCopy];
 
-    if (pin) {
+    if (accessory) {
         [constraints addObjectsFromArray:@[
-            [pin.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-12],
-            [pin.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-            [pin.widthAnchor constraintEqualToConstant:18],
-            [value.trailingAnchor constraintEqualToAnchor:pin.leadingAnchor constant:-7],
+            [accessory.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-12],
+            [accessory.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+            [accessory.widthAnchor constraintEqualToConstant:18],
+            [value.trailingAnchor constraintEqualToAnchor:accessory.leadingAnchor constant:-7],
         ]];
     } else {
         [constraints addObject:
@@ -639,11 +645,9 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
     if (error) NSLog(@"DisplayDisabler: transparency failed: %@", error);
 }
 
-- (void)toggleAutoBrightness:(NSMenuItem *)sender {
-    CGDirectDisplayID did = (CGDirectDisplayID)sender.tag;
-    BOOL newState = ![[Brightness shared] autoBrightnessEnabled:did];
-    [[Brightness shared] setAutoBrightness:newState forDisplay:did];
-    sender.state = newState ? NSControlStateValueOn : NSControlStateValueOff;
+- (void)toggleAutoBrightness:(NSButton *)sender {
+    [[Brightness shared] setAutoBrightness:(sender.state == NSControlStateValueOn)
+                                forDisplay:(CGDirectDisplayID)sender.tag];
 }
 
 - (void)warmthSliderChanged:(NSSlider *)sender {
@@ -673,10 +677,9 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, const CGFloat *t
 }
 
 - (void)togglePinApp:(NSButton *)sender {
-    BOOL nowPinned = (sender.state == NSControlStateValueOn);
     NSError *error = nil;
-    [[WindowTransparency shared] setPinned:nowPinned forApp:(pid_t)sender.tag error:&error];
-    [self stylePinButton:sender pinned:nowPinned];
+    [[WindowTransparency shared] setPinned:(sender.state == NSControlStateValueOn)
+                                    forApp:(pid_t)sender.tag error:&error];
     if (error) NSLog(@"DisplayDisabler: pin failed: %@", error);
 }
 

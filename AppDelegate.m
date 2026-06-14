@@ -302,7 +302,8 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         if (maxPct < 100) maxPct = 100;
         [menu addItem:[self sliderRowWithLabel:@"Brightness" percent:shown minPct:10
                                         maxPct:maxPct continuous:YES tag:display.displayID
-                                        action:@selector(brightnessSliderChanged:)]];
+                                        action:@selector(brightnessSliderChanged:)
+                                   pinnedState:-1]];
         if ([[Brightness shared] supportsAutoBrightness:display.displayID]) {
             NSMenuItem *auto_ = [[NSMenuItem alloc] initWithTitle:@"Auto-brightness"
                 action:@selector(toggleAutoBrightness:) keyEquivalent:@""];
@@ -434,25 +435,30 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         }
         [menu addItem:[self sliderRowWithLabel:app.name percent:pct minPct:20
                                         maxPct:100 continuous:YES tag:app.pid
-                                        action:@selector(opacitySliderChanged:)]];
-        NSMenuItem *pin = [[NSMenuItem alloc] initWithTitle:@"Keep on top"
-            action:@selector(togglePinApp:) keyEquivalent:@""];
-        pin.target = self;
-        pin.tag = app.pid;
-        pin.indentationLevel = 1;
-        pin.state = app.pinned ? NSControlStateValueOn : NSControlStateValueOff;
-        [menu addItem:pin];
+                                        action:@selector(opacitySliderChanged:)
+                                   pinnedState:(app.pinned ? 1 : 0)]];
     }
 
     [menu addItem:[NSMenuItem separatorItem]];
     [menu addItem:[self sliderRowWithLabel:@"All apps" percent:100 minPct:20
                                     maxPct:100 continuous:YES tag:0
-                                    action:@selector(opacitySliderChanged:)]];
+                                    action:@selector(opacitySliderChanged:)
+                               pinnedState:-1]];
     NSMenuItem *reset = [[NSMenuItem alloc]
         initWithTitle:@"Reset all (100%)"
                action:@selector(resetAllTransparency:) keyEquivalent:@""];
     reset.target = self;
     [menu addItem:reset];
+}
+
+- (void)stylePinButton:(NSButton *)b pinned:(BOOL)pinned {
+    NSImageSymbolConfiguration *cfg =
+        [NSImageSymbolConfiguration configurationWithPointSize:11 weight:NSFontWeightSemibold];
+    b.image = [[NSImage imageWithSystemSymbolName:(pinned ? @"pin.fill" : @"pin")
+                            accessibilityDescription:@"Keep on top"]
+               imageWithSymbolConfiguration:cfg];
+    b.contentTintColor = pinned ? [NSColor controlAccentColor] : [NSColor tertiaryLabelColor];
+    b.state = pinned ? NSControlStateValueOn : NSControlStateValueOff;
 }
 
 - (NSMenuItem *)sliderRowWithLabel:(NSString *)label
@@ -461,7 +467,8 @@ static NSString *ddLogicalString(size_t w, size_t h) {
                             maxPct:(int)maxPct
                         continuous:(BOOL)continuous
                                tag:(NSInteger)tag
-                            action:(SEL)action {
+                            action:(SEL)action
+                       pinnedState:(int)pinnedState {
     NSView *row = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, kSliderRowWidth, 24)];
 
     NSTextField *name = [NSTextField labelWithString:label];
@@ -494,7 +501,21 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     [row addSubview:value];
     objc_setAssociatedObject(slider, kDDPctLabelKey, value, OBJC_ASSOCIATION_ASSIGN);
 
-    [NSLayoutConstraint activateConstraints:@[
+    NSButton *pin = nil;
+    if (pinnedState >= 0) {
+        pin = [NSButton buttonWithImage:[NSImage new] target:self
+                                 action:@selector(togglePinApp:)];
+        pin.bordered = NO;
+        pin.imagePosition = NSImageOnly;
+        [pin setButtonType:NSButtonTypePushOnPushOff];
+        pin.tag = tag;
+        pin.toolTip = @"Keep on top";
+        pin.translatesAutoresizingMaskIntoConstraints = NO;
+        [self stylePinButton:pin pinned:(pinnedState == 1)];
+        [row addSubview:pin];
+    }
+
+    NSMutableArray<NSLayoutConstraint *> *constraints = [@[
         [row.heightAnchor constraintEqualToConstant:24],
         [name.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:14],
         [name.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
@@ -502,10 +523,22 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         [slider.leadingAnchor constraintEqualToAnchor:name.trailingAnchor constant:8],
         [slider.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
         [value.leadingAnchor constraintEqualToAnchor:slider.trailingAnchor constant:8],
-        [value.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-14],
         [value.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
         [value.widthAnchor constraintGreaterThanOrEqualToConstant:30],
-    ]];
+    ] mutableCopy];
+
+    if (pin) {
+        [constraints addObjectsFromArray:@[
+            [pin.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-12],
+            [pin.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+            [pin.widthAnchor constraintEqualToConstant:18],
+            [value.trailingAnchor constraintEqualToAnchor:pin.leadingAnchor constant:-7],
+        ]];
+    } else {
+        [constraints addObject:
+            [value.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-14]];
+    }
+    [NSLayoutConstraint activateConstraints:constraints];
 
     NSMenuItem *item = [[NSMenuItem alloc] init];
     item.tag = kSliderItemTag;
@@ -566,12 +599,11 @@ static NSString *ddLogicalString(size_t w, size_t h) {
     if (error) NSLog(@"DisplayDisabler: brightness failed: %@", error);
 }
 
-- (void)togglePinApp:(NSMenuItem *)sender {
-    pid_t pid = (pid_t)sender.tag;
-    BOOL newState = sender.state != NSControlStateValueOn;
+- (void)togglePinApp:(NSButton *)sender {
+    BOOL nowPinned = (sender.state == NSControlStateValueOn);
     NSError *error = nil;
-    [[WindowTransparency shared] setPinned:newState forApp:pid error:&error];
-    sender.state = newState ? NSControlStateValueOn : NSControlStateValueOff;
+    [[WindowTransparency shared] setPinned:nowPinned forApp:(pid_t)sender.tag error:&error];
+    [self stylePinButton:sender pinned:nowPinned];
     if (error) NSLog(@"DisplayDisabler: pin failed: %@", error);
 }
 

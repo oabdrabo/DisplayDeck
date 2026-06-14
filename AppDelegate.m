@@ -435,6 +435,13 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         [menu addItem:[self sliderRowWithLabel:app.name percent:pct minPct:20
                                         maxPct:100 continuous:YES tag:app.pid
                                         action:@selector(opacitySliderChanged:)]];
+        NSMenuItem *pin = [[NSMenuItem alloc] initWithTitle:@"Keep on top"
+            action:@selector(togglePinApp:) keyEquivalent:@""];
+        pin.target = self;
+        pin.tag = app.pid;
+        pin.indentationLevel = 1;
+        pin.state = app.pinned ? NSControlStateValueOn : NSControlStateValueOff;
+        [menu addItem:pin];
     }
 
     [menu addItem:[NSMenuItem separatorItem]];
@@ -557,6 +564,15 @@ static NSString *ddLogicalString(size_t w, size_t h) {
         [[BrightnessBooster shared] setBoost:(float)val forDisplay:did];
     }
     if (error) NSLog(@"DisplayDisabler: brightness failed: %@", error);
+}
+
+- (void)togglePinApp:(NSMenuItem *)sender {
+    pid_t pid = (pid_t)sender.tag;
+    BOOL newState = sender.state != NSControlStateValueOn;
+    NSError *error = nil;
+    [[WindowTransparency shared] setPinned:newState forApp:pid error:&error];
+    sender.state = newState ? NSControlStateValueOn : NSControlStateValueOff;
+    if (error) NSLog(@"DisplayDisabler: pin failed: %@", error);
 }
 
 - (void)resetAllTransparency:(NSMenuItem *)sender {

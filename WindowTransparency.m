@@ -10,7 +10,12 @@ static NSErrorDomain const kTransparencyErrorDomain = @"com.local.DisplayDisable
 
 static const uint8_t kSAOpcodeWindowOpacity = 0x07;
 static const uint8_t kSAOpcodeWindowBlur    = 0x08;
+static const uint8_t kSAOpcodeWindowLevel   = 0x09;
 static const int kMaxBlurRadius = 28;
+
+@interface WindowTransparency ()
+@property (nonatomic, strong) NSMutableSet<NSNumber *> *pinnedWindowIDs;
+@end
 
 @implementation DDWindow
 @end
@@ -25,6 +30,11 @@ static const int kMaxBlurRadius = 28;
     static dispatch_once_t once;
     dispatch_once(&once, ^{ instance = [[WindowTransparency alloc] init]; });
     return instance;
+}
+
+- (NSMutableSet<NSNumber *> *)pinnedWindowIDs {
+    if (!_pinnedWindowIDs) _pinnedWindowIDs = [NSMutableSet set];
+    return _pinnedWindowIDs;
 }
 
 - (NSString *)socketPath {
@@ -80,10 +90,30 @@ static NSString *shellQuote(NSString *s) {
             [s stringByReplacingOccurrencesOfString:@"'" withString:@"'\\''"]];
 }
 
-- (void)ensureBackendLoaded {
-    if ([self reloadSilently]) return;
+- (NSString *)bundleSADir {
+    return [[NSBundle mainBundle].resourcePath stringByAppendingPathComponent:@"sa"];
+}
 
-    NSString *saDir = [[NSBundle mainBundle].resourcePath stringByAppendingPathComponent:@"sa"];
+- (BOOL)installedSAMatchesBundle {
+    NSData *inst = [NSData dataWithContentsOfFile:@"/Library/DisplayDisabler/payload"];
+    NSData *bund = [NSData dataWithContentsOfFile:
+        [[self bundleSADir] stringByAppendingPathComponent:@"payload"]];
+    return inst && bund && [inst isEqualToData:bund];
+}
+
+- (void)restartDockAndInject {
+    [self runTask:@"/usr/bin/killall" args:@[@"Dock"]];
+    for (int i = 0; i < 20; i++) {
+        usleep(300000);
+        [self runTask:@"/usr/bin/sudo" args:@[@"-n", kSALoaderPath]];
+        if ([self backendAvailable]) return;
+    }
+}
+
+- (void)ensureBackendLoaded {
+    if ([self installedSAMatchesBundle] && [self reloadSilently]) return;
+
+    NSString *saDir = [self bundleSADir];
     if (![[NSFileManager defaultManager]
             isReadableFileAtPath:[saDir stringByAppendingPathComponent:@"loader"]]) {
         NSLog(@"DisplayDisabler: bundled scripting addition missing in %@", saDir);
@@ -99,17 +129,18 @@ static NSString *shellQuote(NSString *s) {
         @"chown -R root:wheel /Library/DisplayDisabler && "
         @"chmod -R 755 /Library/DisplayDisabler && "
         @"echo %@ > /etc/sudoers.d/displaydisabler && "
-        @"chmod 440 /etc/sudoers.d/displaydisabler && "
-        @"%@",
+        @"chmod 440 /etc/sudoers.d/displaydisabler",
         shellQuote([saDir stringByAppendingPathComponent:@"loader"]),
         shellQuote([saDir stringByAppendingPathComponent:@"payload"]),
-        sudoLine, kSALoaderPath];
+        sudoLine];
 
     NSString *source = [NSString stringWithFormat:
         @"do shell script \"%@\" with administrator privileges", DDAppleScriptEscape(cmd)];
     NSDictionary *err = nil;
     [[[NSAppleScript alloc] initWithSource:source] executeAndReturnError:&err];
-    if (err) NSLog(@"DisplayDisabler: SA install failed: %@", err);
+    if (err) { NSLog(@"DisplayDisabler: SA install failed: %@", err); return; }
+
+    [self restartDockAndInject];
 }
 
 - (NSArray<DDAppWindows *> *)appsWithWindows {
@@ -126,8 +157,11 @@ static NSString *shellQuote(NSString *s) {
     for (CFIndex i = 0; i < count; i++) {
         NSDictionary *info = (__bridge NSDictionary *)CFArrayGetValueAtIndex(list, i);
 
+        uint32_t wid = [(NSNumber *)info[(__bridge NSString *)kCGWindowNumber] unsignedIntValue];
+        BOOL isPinned = [self.pinnedWindowIDs containsObject:@(wid)];
+
         NSNumber *layer = info[(__bridge NSString *)kCGWindowLayer];
-        if (layer.intValue != 0) continue;
+        if (layer.intValue != 0 && !isPinned) continue;
 
         NSNumber *pidNum = info[(__bridge NSString *)kCGWindowOwnerPID];
         if (!pidNum || pidNum.intValue == selfPID) continue;
@@ -138,7 +172,7 @@ static NSString *shellQuote(NSString *s) {
         if (bounds.size.width < 80 || bounds.size.height < 80) continue;
 
         DDWindow *w = [[DDWindow alloc] init];
-        w.windowID = [(NSNumber *)info[(__bridge NSString *)kCGWindowNumber] unsignedIntValue];
+        w.windowID = wid;
         w.alpha    = [(NSNumber *)info[(__bridge NSString *)kCGWindowAlpha] floatValue];
 
         DDAppWindows *app = byPID[pidNum];
@@ -150,6 +184,7 @@ static NSString *shellQuote(NSString *s) {
             byPID[pidNum] = app;
             [order addObject:app];
         }
+        if (isPinned) app.pinned = YES;
         app.windows = [app.windows arrayByAddingObject:w];
     }
     CFRelease(list);
@@ -240,6 +275,32 @@ static NSString *shellQuote(NSString *s) {
             [self applyBlur:radius toWindowID:w.windowID error:NULL];
         }
     }
+}
+
+- (BOOL)applyLevel:(int)level toWindowID:(uint32_t)windowID error:(NSError **)error {
+    struct { uint32_t wid; int level; } p = { windowID, level };
+    return [self sendOpcode:kSAOpcodeWindowLevel payload:&p length:sizeof p error:error];
+}
+
+- (BOOL)setPinned:(BOOL)pinned forApp:(pid_t)pid error:(NSError **)error {
+    [self reloadSilently];
+    int level = pinned ? (int)CGWindowLevelForKey(kCGFloatingWindowLevelKey) : 0;
+    BOOL all = YES;
+    NSError *first = nil;
+    for (DDAppWindows *app in [self appsWithWindows]) {
+        if (app.pid != pid) continue;
+        for (DDWindow *w in app.windows) {
+            NSError *e = nil;
+            if (![self applyLevel:level toWindowID:w.windowID error:&e]) {
+                all = NO;
+                if (!first) first = e;
+            }
+            if (pinned) [self.pinnedWindowIDs addObject:@(w.windowID)];
+            else        [self.pinnedWindowIDs removeObject:@(w.windowID)];
+        }
+    }
+    if (!all && error) *error = first;
+    return all;
 }
 
 @end

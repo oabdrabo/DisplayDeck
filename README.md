@@ -134,7 +134,13 @@ Issues, ideas, and PRs are welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)*
 
 ## 💖 Support & sponsors
 
-DisplayDisabler is free, open-source, and has no tracking or ads. If it's useful to you, you can support continued development via the **Sponsor ❤️ button** at the top of the repo. Sponsors and backers will be credited here — thank you! 🙏
+DisplayDisabler is free, open-source, and has no tracking or ads. If it's useful to you, you can support continued development:
+
+<p align="center">
+  <a href="https://donate.stripe.com/3cI6oI7Gh1PG0eV8MJ5kk00"><img src="https://img.shields.io/badge/Donate-pay%20what%20you%20like-635bff?logo=stripe&logoColor=white" alt="Donate via Stripe" height="28" /></a>
+</p>
+
+…or use the **Sponsor ❤️ button** at the top of the repo. Sponsors and backers will be credited here — thank you! 🙏
 
 ## 📄 License
 

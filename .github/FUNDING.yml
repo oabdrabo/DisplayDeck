@@ -1,7 +1,4 @@
-# Adds the "Sponsor" button to the repo. Enable GitHub Sponsors for the
-# button to go live, and/or uncomment the platforms you actually use.
+# Adds the "Sponsor" button to the repo.
+# github: lights up only once GitHub Sponsors is enabled; the Stripe link works now.
 github: [oabdrabo]
-# ko_fi: yourname
-# buy_me_a_coffee: yourname
-# patreon: yourname
-# custom: ["https://paypal.me/yourname"]
+custom: ["https://donate.stripe.com/3cI6oI7Gh1PG0eV8MJ5kk00"]

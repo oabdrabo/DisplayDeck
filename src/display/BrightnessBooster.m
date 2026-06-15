@@ -7,10 +7,32 @@ static NSScreen *screenForDisplay(CGDirectDisplayID did);
 
 static const float kHeadroomProbeStep = 0.1f;
 
+static BOOL fullScreenSystemOverlayActive(CGDirectDisplayID displayID) {
+    CFArrayRef list = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly,
+                                                 kCGNullWindowID);
+    if (!list) return NO;
+    CGRect bounds = CGDisplayBounds(displayID);
+    BOOL active = NO;
+    for (CFIndex i = 0; i < CFArrayGetCount(list); i++) {
+        NSDictionary *info = (__bridge NSDictionary *)CFArrayGetValueAtIndex(list, i);
+        if ([info[(__bridge NSString *)kCGWindowLayer] intValue] <= 0) continue;
+        if (![info[(__bridge NSString *)kCGWindowOwnerName] isEqualToString:@"Dock"]) continue;
+        CGRect b = CGRectZero;
+        CGRectMakeWithDictionaryRepresentation(
+            (__bridge CFDictionaryRef)info[(__bridge NSString *)kCGWindowBounds], &b);
+        if (b.size.width >= bounds.size.width * 0.9 &&
+            b.size.height >= bounds.size.height * 0.9) { active = YES; break; }
+    }
+    CFRelease(list);
+    return active;
+}
+
 @interface DDBoost : NSObject
 @property (nonatomic) CGDirectDisplayID displayID;
 @property (nonatomic) float boost;
 @property (nonatomic) float presented;
+@property (nonatomic) int pollCounter;
+@property (nonatomic) BOOL suspended;
 @property (nonatomic, strong) NSWindow *window;
 @property (nonatomic, strong) CAMetalLayer *layer;
 @property (nonatomic, strong) id<MTLCommandQueue> queue;
@@ -24,9 +46,14 @@ static const float kHeadroomProbeStep = 0.1f;
         id<CAMetalDrawable> drawable = [self.layer nextDrawable];
         if (!drawable) return;
 
+        if (self.pollCounter-- <= 0) {
+            self.pollCounter = 10;
+            self.suspended = fullScreenSystemOverlayActive(self.displayID);
+        }
+
         NSScreen *s = screenForDisplay(self.displayID);
         float headroom = s ? (float)s.maximumExtendedDynamicRangeColorComponentValue : 1.0f;
-        float eff = MIN(self.boost, headroom + kHeadroomProbeStep);
+        float eff = self.suspended ? 1.0f : MIN(self.boost, headroom + kHeadroomProbeStep);
         if (eff < 1.0f) eff = 1.0f;
         self.presented = eff;
 

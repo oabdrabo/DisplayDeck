@@ -16,3 +16,4 @@ AppIcon.iconset/
 .idea/
 *.xcodeproj/
 .claude/
+*.app.zip

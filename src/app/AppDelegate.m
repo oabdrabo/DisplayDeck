@@ -363,12 +363,10 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
                                     maxPct:100 continuous:YES tag:display.displayID
                                     action:@selector(warmthSliderChanged:)
                                  accessories:@[]]];
-    NSArray<DDDisplayMode *> *allModes = [self.displayManager modesForDisplay:display.displayID];
-    BOOL hasNativeHiDPI = NO;
-    for (DDDisplayMode *m in allModes) if (m.isHiDPI) { hasNativeHiDPI = YES; break; }
     {
         NSArray<DDDisplayMode *> *modes =
-            [self curatedModes:allModes includeNonHiDPI:[self pref:kShowResolutions]];
+            [self curatedModes:[self.displayManager modesForDisplay:display.displayID]
+               includeNonHiDPI:[self pref:kShowResolutions]];
         size_t lw = display.logicalWidth ?: display.pixelWidth;
         size_t lh = display.logicalHeight ?: display.pixelHeight;
         NSMutableString *rt = [NSMutableString stringWithString:@"Resolution"];
@@ -378,7 +376,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
         res.submenu = [self buildModesSubmenuForDisplay:display.displayID modes:modes];
         [menu addItem:res];
     }
-    if (!hasNativeHiDPI && NSClassFromString(@"CGVirtualDisplay") != nil) {
+    if (NSClassFromString(@"CGVirtualDisplay") != nil) {
         NSArray<DDDisplayMode *> *options =
             [self.displayManager forceHiDPIOptionsForDisplay:display.displayID];
         if (options.count > 0) {

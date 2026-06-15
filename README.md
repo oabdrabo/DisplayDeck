@@ -45,7 +45,7 @@ The menu-bar icon is an interactive **coffee mug**: left-click toggles keep-awak
 
 <p align="center"><img src="assets/demo.gif" width="430" alt="DisplayDeck quick tour — menu, keep-awake, resolution, Force HiDPI, settings" /></p>
 
-It lives in the menu bar as a coffee mug — left-click toggles keep-awake, right-click opens the menu:
+The menu-bar mug:
 
 <p align="center"><img src="assets/screenshots/menubar.png" height="26" alt="Menu-bar mug icon" /></p>
 

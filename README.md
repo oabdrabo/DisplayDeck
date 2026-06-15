@@ -8,7 +8,7 @@
 
 Disable & enable screens · Force HiDPI · brightness with EDR boost · color warmth · window transparency, blur, keep-on-top & picture-in-picture · keep-awake.
 
-[![Release](https://img.shields.io/badge/release-v2.0.0-2ea44f.svg)](https://github.com/oabdrabo/DisplayDeck/releases/latest)
+[![Release](https://img.shields.io/badge/release-v2.1.0-2ea44f.svg)](https://github.com/oabdrabo/DisplayDeck/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/macOS-14%2B-black.svg?logo=apple)](#-requirements)
 [![Apple Silicon](https://img.shields.io/badge/arch-Apple%20Silicon-555.svg)](#-requirements)

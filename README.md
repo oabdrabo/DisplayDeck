@@ -45,6 +45,8 @@ The menu-bar icon is an interactive **coffee mug**: left-click toggles keep-awak
 
 ## 📸 Screenshots
 
+<p align="center"><img src="assets/demo.gif" width="430" alt="DisplayDisabler quick tour — menu, keep-awake, resolution, Force HiDPI, settings" /></p>
+
 It lives in the menu bar as a coffee mug — left-click toggles keep-awake, right-click opens the menu:
 
 <p align="center"><img src="assets/screenshots/menubar.png" height="26" alt="Menu-bar mug icon" /></p>

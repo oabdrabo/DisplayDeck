@@ -32,13 +32,24 @@ The menu-bar icon is an interactive **coffee mug**: left-click toggles keep-awak
 
 ## 📸 Screenshots
 
-<p align="center">
-  <img src="assets/screenshots/menu.png" width="290" alt="DisplayDisabler menu" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="assets/screenshots/settings.png" width="430" alt="Settings submenu" />
-</p>
+It lives in the menu bar as a coffee mug — left-click toggles keep-awake, right-click opens the menu:
 
-Per-display brightness (with inline auto-brightness) and warmth sliders, resolution & Force-HiDPI submenus, per-app transparency with frosted-glass / keep-on-top / picture-in-picture toggles, and a grouped Settings submenu.
+<p align="center"><img src="assets/screenshots/menubar.png" height="26" alt="Menu-bar mug icon" /></p>
+
+The menu — per-display **Brightness** (with the inline **Ⓐ** auto-brightness toggle) and **Warmth** sliders, and per-app **Transparency** rows with frosted-glass, keep-on-top, and picture-in-picture toggles:
+
+<p align="center"><img src="assets/screenshots/menu.png" width="300" alt="Main menu" /></p>
+
+Submenus — Keep-Awake durations, the curated **Resolution** picker (★ = panel-native), the **Force HiDPI** "More Space" tier, and the grouped **Settings**:
+
+<p align="center">
+  <img src="assets/screenshots/keepawake.png" width="330" alt="Keep Awake durations" />
+  <img src="assets/screenshots/resolution.png" width="330" alt="Resolution picker" />
+</p>
+<p align="center">
+  <img src="assets/screenshots/forcehidpi.png" width="330" alt="Force HiDPI sizes" />
+  <img src="assets/screenshots/settings.png" width="330" alt="Settings" />
+</p>
 
 ## 📦 Install
 

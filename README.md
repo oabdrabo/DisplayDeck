@@ -10,12 +10,22 @@ Disable & enable screens · Force HiDPI · brightness with EDR boost · color wa
 
 [![Release](https://img.shields.io/badge/release-v2.0.0-2ea44f.svg)](https://github.com/oabdrabo/DisplayDisabler/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/macOS-14%2B-black.svg?logo=apple)](#requirements)
-[![Apple Silicon](https://img.shields.io/badge/arch-Apple%20Silicon-555.svg)](#requirements)
+[![Platform](https://img.shields.io/badge/macOS-14%2B-black.svg?logo=apple)](#-requirements)
+[![Apple Silicon](https://img.shields.io/badge/arch-Apple%20Silicon-555.svg)](#-requirements)
+[![Made with Objective-C](https://img.shields.io/badge/Objective--C-ARC-438eff.svg)](#-how-it-works)
+
+<sub>
+
+[**Features**](#-features) · [**Screenshots**](#-screenshots) · [**Install**](#-install) · [**Requirements**](#-requirements) · [**How it works**](#-how-it-works) · [**Contributing**](#-contributing) · [**License**](#-license)
+
+</sub>
 
 </div>
 
 ---
+
+> [!NOTE]
+> **One mug in your menu bar replaces a stack of paid utilities** — display disabling, retina-scaling tools, brightness/HDR boosters, f.lux-style warmth, window-transparency hacks, and KeepingYouAwake — in a single, under-1 MB native app with no telemetry, no subscription, and no background daemon. It's built entirely on Apple's own (private) frameworks; nothing is bundled or phoned home.
 
 ## ✨ Features
 
@@ -59,7 +69,8 @@ Submenus — Keep-Awake durations, the curated **Resolution** picker (★ = pane
 brew install --cask oabdrabo/tap/displaydisabler
 ```
 
-**From source:**
+<details>
+<summary><b>From source</b></summary>
 
 ```sh
 git clone https://github.com/oabdrabo/DisplayDisabler.git
@@ -67,7 +78,23 @@ cd DisplayDisabler
 make install      # builds, ad-hoc signs, copies to /Applications, launches
 ```
 
-From source needs Xcode Command Line Tools (`xcode-select --install`). It launches at login by default — toggle that under the menu-bar icon → **Settings → Launch at Login**.
+Needs Xcode Command Line Tools (`xcode-select --install`). Other targets: `make` (build only), `make zip` (release artifact), `make clean`, `make uninstall`.
+
+</details>
+
+It launches at login by default — toggle that under the menu-bar icon → **Settings → Launch at Login**. The app is **ad-hoc signed** (not notarized), so Gatekeeper may warn on first open; the Homebrew cask strips the quarantine flag for you, or right-click → **Open** once.
+
+## 🧹 Uninstall
+
+```sh
+brew uninstall --cask displaydisabler      # if installed via Homebrew
+```
+
+From source, or to remove the Dock scripting addition installed for transparency:
+
+```sh
+make uninstall      # removes the app + (with admin) the scripting addition & sudoers entry
+```
 
 ## ⚙️ Requirements
 
@@ -111,4 +138,13 @@ DisplayDisabler is free, open-source, and has no tracking or ads. If it's useful
 
 ## 📄 License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). Free to use, modify, and distribute.
+
+<div align="center">
+<br />
+
+**[⬆ back to top](#displaydisabler)**
+
+<sub>Built with ☕ on macOS · made for people who like their displays exactly how they want them.</sub>
+
+</div>

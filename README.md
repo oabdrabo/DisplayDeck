@@ -101,6 +101,14 @@ tools/                build_icon.m — generates AppIcon.icns
 resources/            Info.plist
 ```
 
+## 🤝 Contributing
+
+Issues, ideas, and PRs are welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)** for build, test, and PR guidelines. Since everything rides on private macOS APIs, real-device verification is especially valued.
+
+## 💖 Support & sponsors
+
+DisplayDisabler is free, open-source, and has no tracking or ads. If it's useful to you, you can support continued development via the **Sponsor ❤️ button** at the top of the repo. Sponsors and backers will be credited here — thank you! 🙏
+
 ## 📄 License
 
 MIT — see [LICENSE](LICENSE).

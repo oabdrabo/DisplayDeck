@@ -343,6 +343,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
         int maxPct = (int)lroundf([[BrightnessBooster shared]
                                    maxBoostForDisplay:display.displayID] * 100.0f);
         if (maxPct < 100) maxPct = 100;
+        if (shown > maxPct) shown = maxPct;
         NSButton *autoToggle = nil;
         if ([[Brightness shared] supportsAutoBrightness:display.displayID]) {
             autoToggle = [self rowToggleWithSymbol:@"a.circle" onSymbol:@"a.circle.fill"

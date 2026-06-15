@@ -31,6 +31,7 @@ static BOOL fullScreenSystemOverlayActive(CGDirectDisplayID displayID) {
 @property (nonatomic) CGDirectDisplayID displayID;
 @property (nonatomic) float boost;
 @property (nonatomic) float presented;
+@property (nonatomic) float observedPeak;
 @property (nonatomic) int pollCounter;
 @property (nonatomic) BOOL suspended;
 @property (nonatomic, strong) NSWindow *window;
@@ -57,6 +58,7 @@ static BOOL fullScreenSystemOverlayActive(CGDirectDisplayID displayID) {
 
         NSScreen *s = screenForDisplay(self.displayID);
         float headroom = s ? (float)s.maximumExtendedDynamicRangeColorComponentValue : 1.0f;
+        if (headroom > self.observedPeak) self.observedPeak = headroom;
         float eff = MIN(self.boost, headroom + kHeadroomProbeStep);
         if (eff < 1.0f) eff = 1.0f;
         self.presented = eff;
@@ -88,9 +90,12 @@ static NSScreen *screenForDisplay(CGDirectDisplayID did) {
     return nil;
 }
 
+static NSString *const kHeadroomKey = @"DDBoostHeadroom";
+
 @interface BrightnessBooster ()
 @property (nonatomic, strong) id<MTLDevice> device;
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, DDBoost *> *boosts;
+@property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSNumber *> *learnedHeadroom;
 @end
 
 @implementation BrightnessBooster
@@ -107,6 +112,13 @@ static NSScreen *screenForDisplay(CGDirectDisplayID did) {
     if (self) {
         _device = MTLCreateSystemDefaultDevice();
         _boosts = [NSMutableDictionary dictionary];
+        _learnedHeadroom = [NSMutableDictionary dictionary];
+        NSDictionary *saved = [[NSUserDefaults standardUserDefaults] dictionaryForKey:kHeadroomKey];
+        for (NSString *key in saved) {
+            if ([saved[key] isKindOfClass:[NSNumber class]]) {
+                _learnedHeadroom[@((CGDirectDisplayID)key.longLongValue)] = saved[key];
+            }
+        }
     }
     return self;
 }
@@ -115,7 +127,21 @@ static NSScreen *screenForDisplay(CGDirectDisplayID did) {
     return self.device != nil;
 }
 
+- (void)learnHeadroom:(float)peak forDisplay:(CGDirectDisplayID)displayID {
+    if (peak <= 1.05f) return;
+    NSNumber *prev = self.learnedHeadroom[@(displayID)];
+    if (prev && prev.floatValue >= peak) return;
+    self.learnedHeadroom[@(displayID)] = @(peak);
+    NSMutableDictionary *out = [NSMutableDictionary dictionary];
+    for (NSNumber *k in self.learnedHeadroom) out[k.stringValue] = self.learnedHeadroom[k];
+    [[NSUserDefaults standardUserDefaults] setObject:out forKey:kHeadroomKey];
+}
+
 - (float)maxBoostForDisplay:(CGDirectDisplayID)displayID {
+    DDBoost *active = self.boosts[@(displayID)];
+    if (active && active.observedPeak > 1.05f) return active.observedPeak;
+    NSNumber *learned = self.learnedHeadroom[@(displayID)];
+    if (learned && learned.floatValue > 1.05f) return learned.floatValue;
     NSScreen *s = screenForDisplay(displayID);
     float p = s ? (float)s.maximumPotentialExtendedDynamicRangeColorComponentValue : 1.0f;
     return p > 1.0f ? p : 1.0f;
@@ -132,6 +158,7 @@ static NSScreen *screenForDisplay(CGDirectDisplayID did) {
     if (factor <= 1.001f) {
         DDBoost *b = self.boosts[@(displayID)];
         if (b) {
+            [self learnHeadroom:b.observedPeak forDisplay:displayID];
             [b teardown];
             [self.boosts removeObjectForKey:@(displayID)];
         }

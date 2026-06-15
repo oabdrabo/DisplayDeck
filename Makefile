@@ -28,7 +28,7 @@ SA_DIR     = sa
 SA_FLAGS   = -O2 -arch arm64e -mmacosx-version-min=11.0
 SA_BIN     = $(SA_DIR)/bin
 
-.PHONY: all clean bundle sign install uninstall icon sa
+.PHONY: all clean bundle sign install uninstall icon sa zip
 
 all: bundle sign
 
@@ -83,6 +83,11 @@ install: all
 	@rm -rf "/Applications/$(BUNDLE)"
 	@cp -R "$(BUNDLE)" /Applications/
 	@echo "Installed to /Applications/$(BUNDLE)"
+
+zip: all
+	@rm -f "$(APP_NAME).app.zip"
+	@ditto -c -k --keepParent "$(BUNDLE)" "$(APP_NAME).app.zip"
+	@echo "Wrote $(APP_NAME).app.zip ($$(shasum -a 256 "$(APP_NAME).app.zip" | cut -d' ' -f1))"
 
 uninstall:
 	@rm -rf "/Applications/$(BUNDLE)"

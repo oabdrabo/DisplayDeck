@@ -188,12 +188,12 @@ static NSData *entry8(NSUInteger logicalW, NSUInteger logicalH) {
         @"/usr/bin/tee %@ > /dev/null <<'CRISP_EOF'\n"
         @"%@"
         @"CRISP_EOF\n"
-        @"/usr/sbin/chown -R root:wheel %@ && "
-        @"/bin/chmod -R 0644 %@ && "
+        @"/usr/sbin/chown root:wheel %@ && "
+        @"/bin/chmod 0644 %@ && "
         @"/bin/chmod 0755 %@ && "
         @"/usr/bin/defaults write /Library/Preferences/com.apple.windowserver "
         @"DisplayResolutionEnabled -bool YES",
-        dir, path, xml, dir, path, dir];
+        dir, path, xml, path, path, dir];
 
     [self runPrivilegedShell:script completion:^(BOOL ok, NSError *err) {
         if (!ok) { completion(NO, err); return; }
@@ -212,7 +212,8 @@ static NSData *entry8(NSUInteger logicalW, NSUInteger logicalH) {
     NSString *path = [self overridePathForDisplay:displayID];
     NSString *dir  = [path stringByDeletingLastPathComponent];
 
-    NSString *script = [NSString stringWithFormat:@"/bin/rm -rf %@", dir];
+    NSString *script = [NSString stringWithFormat:
+        @"/bin/rm -f %@ ; /bin/rmdir %@ 2>/dev/null || true", path, dir];
     [self runPrivilegedShell:script completion:completion];
 }
 

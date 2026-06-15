@@ -1,19 +1,18 @@
 <div align="center">
 
-<img src="assets/icon.png" width="128" alt="DisplayDeck icon" />
-
-# DisplayDeck
-
-**A tiny macOS menu-bar app for total control of your Mac's displays.**
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.png" />
+  <img src="assets/banner-dark.png" alt="DisplayDeck — total control of your Mac's displays and windows" width="880" />
+</picture>
 
 Disable & enable screens · Force HiDPI · brightness with EDR boost · color warmth · window transparency, blur, keep-on-top & picture-in-picture · keep-awake.
 
-[![Release](https://img.shields.io/badge/release-v2.1.0-2ea44f.svg)](https://github.com/oabdrabo/DisplayDeck/releases/latest)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/macOS-14%2B-black.svg?logo=apple)](#-requirements)
-[![Apple Silicon](https://img.shields.io/badge/arch-Apple%20Silicon-555.svg)](#-requirements)
-[![Made with Objective-C](https://img.shields.io/badge/Objective--C-ARC-438eff.svg)](#-how-it-works)
-[![Website](https://img.shields.io/badge/website-oabdrabo.github.io-635bff.svg)](https://oabdrabo.github.io/DisplayDeck/)
+[![Release](https://img.shields.io/badge/release-v2.1.0-2ea44f?style=flat-square)](https://github.com/oabdrabo/DisplayDeck/releases/latest)
+[![License](https://img.shields.io/badge/license-MIT-3da639?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/macOS-14%2B-000?style=flat-square&logo=apple&logoColor=white)](#-requirements)
+[![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-555?style=flat-square)](#-requirements)
+[![Objective-C](https://img.shields.io/badge/Objective--C-438eff?style=flat-square)](#-how-it-works)
+[![Website](https://img.shields.io/badge/website-635bff?style=flat-square&logo=githubpages&logoColor=white)](https://oabdrabo.github.io/DisplayDeck/)
 
 <sub>
 

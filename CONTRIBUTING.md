@@ -33,11 +33,19 @@ See the [Project layout](README.md#%EF%B8%8F-project-layout) section of the READ
 - The build must stay **warning-free** (`-Wall -Wextra`) and **`clang --analyze`-clean**. Please run a quick analyze pass on files you touch.
 - These features lean on **private CoreGraphics / SkyLight / DisplayServices APIs** — be conservative, prefer documented/observed behavior, and clamp/guard anything that could fail across macOS versions.
 
+## Before you start
+
+For anything beyond a small fix, **open an issue first** — it's better to agree on direction before investing significant work. If you use AI tools in any way, your contribution must follow the **[AI Contribution Policy](AI_POLICY.md)** (disclose what you used, understand your own code, and only submit focused, genuinely-needed changes).
+
 ## Pull requests
 
 1. Branch off `main`.
-2. Describe what changed and why; note anything you couldn't verify (e.g. behavior that needs a reboot, multiple displays, or SIP disabled).
-3. Verify it builds (`make`) and the features you touched still work end-to-end.
+2. **Keep it focused — one concern per PR** (a single bug or feature). Avoid unrelated changes such as whitespace fixes or rewording comments elsewhere in the codebase.
+3. **Follow the existing coding conventions** (see [Code style](#code-style)).
+4. Describe what changed and why; note anything you couldn't verify (e.g. behavior that needs a reboot, multiple displays, or SIP disabled).
+5. Verify it builds (`make`) and the features you touched still work end-to-end. Tests and verification notes are very welcome.
+
+By submitting a pull request, you agree that your contribution will be licensed under the project's **[MIT License](LICENSE)**.
 
 Because everything here rides on private APIs, behavior can change between macOS releases — real-device verification matters more than usual. Thanks for helping keep it solid.
 

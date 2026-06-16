@@ -616,7 +616,9 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 // the sliders, instead of a popup. Commits on Return / when focus leaves.
 - (NSMenuItem *)relayFieldRow:(NSString *)label value:(NSString *)value
                   placeholder:(NSString *)placeholder action:(SEL)action {
-    NSView *row = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, kSliderRowWidth, 30)];
+    // Wide row — these live in submenus (relay / add-a-Mac), so a roomy fixed
+    // width gives the text field space without affecting the main menu.
+    NSView *row = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 300, 30)];
 
     NSTextField *name = [NSTextField labelWithString:label];
     name.font = [NSFont menuFontOfSize:13];

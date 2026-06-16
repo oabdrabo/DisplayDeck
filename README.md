@@ -44,9 +44,9 @@ The menu-bar icon is an interactive **coffee mug**: left-click toggles keep-awak
 
 ## 📸 Screenshots
 
-The menu-bar mug:
+The menu-bar mug — an empty cup when idle, filled while keeping your Mac awake (left-click to toggle, right-click for the menu):
 
-<p align="center"><img src="assets/screenshots/menubar.png" height="26" alt="Menu-bar mug icon" /></p>
+<p align="center"><img src="assets/screenshots/menubar.png" width="380" alt="Menu-bar mug icon — empty when idle, filled when keeping awake" /></p>
 
 The menu — per-display **Brightness** (with the inline **Ⓐ** auto-brightness toggle) and **Warmth** sliders, a **Window** snapping section, and per-app **Transparency** rows with frosted-glass, keep-on-top, and picture-in-picture toggles:
 

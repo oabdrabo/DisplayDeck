@@ -714,11 +714,15 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     }
     int warmth = (int)lroundf([[ColorTemperature shared]
                                warmthForDisplay:display.displayID] * 100.0f);
+    NSButton *autoWarm = [self rowToggleWithSymbol:@"moon" onSymbol:@"moon.fill"
+        state:[ColorTemperature shared].autoEnabled
+          tag:(NSInteger)display.displayID
+       action:@selector(toggleAutoWarmth:) tooltip:@"Auto-warm at night"];
     [menu addItem:[self sliderRowWithLabel:@"Warmth" icon:ddSymbol(@"thermometer.sun")
                                    percent:warmth minPct:0
                                     maxPct:100 continuous:YES tag:display.displayID
                                     action:@selector(warmthSliderChanged:)
-                                 accessories:@[]]];
+                                 accessories:@[autoWarm]]];
     {
         NSArray<DDDisplayMode *> *modes =
             [self curatedModes:[self.displayManager modesForDisplay:display.displayID]
@@ -1008,6 +1012,12 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [self syncSliderLabel:sender];
     [[ColorTemperature shared] setWarmth:sender.floatValue
                               forDisplay:(CGDirectDisplayID)sender.tag];
+}
+
+- (void)toggleAutoWarmth:(NSButton *)sender {
+    BOOL on = (sender.state == NSControlStateValueOn);
+    [ColorTemperature shared].autoEnabled = on;   // applies the night schedule (or clears it)
+    ddSetToggle(sender, on);
 }
 
 - (void)brightnessSliderChanged:(NSSlider *)sender {

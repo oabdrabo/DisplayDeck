@@ -2,6 +2,17 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.2.0] — 2026-06-16
+
+### Added
+- **Text smoothing** control (Off → Strong) — adjusts macOS's grayscale antialiasing so text isn't thin or fuzzy on external, non-Retina, or scaled monitors. Top-level in the menu; applies after a re-login.
+
+### Changed
+- **Force HiDPI** offers more "looks-like" resolutions, now gated by a **GPU-tuned rendered-framebuffer ceiling** (auto-scaled from the Metal memory budget — 5K/6K/8K/10K tiers) instead of a flat 1.5× cap. Small / 2K panels get more options; large panels stay protected from oversized buffers.
+
+### Fixed
+- The **pin**, **picture-in-picture**, and **auto-brightness** row toggles now show an active state (accent-tinted icon) instead of looking unchanged after a click.
+
 ## [2.1.0] — 2026-06-15
 
 ### Changed
@@ -26,6 +37,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ### Added
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
+[2.2.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.2.0
 [2.1.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.1.0
 [2.0.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.0.0
 [1.0.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v1.0.0

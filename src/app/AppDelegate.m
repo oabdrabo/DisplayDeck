@@ -256,7 +256,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 
     [menu addItem:[NSMenuItem separatorItem]];
 
-    [menu addItem:[self fontSmoothingItem]];
+    [menu addItem:[self fontSmoothingRowItem]];
 
     NSMenuItem *settingsItem = [[NSMenuItem alloc]
         initWithTitle:@"Settings" action:nil keyEquivalent:@""];
@@ -776,8 +776,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     return n;
 }
 
-- (void)chooseFontSmoothing:(NSMenuItem *)sender {
-    NSInteger level = [sender.representedObject integerValue];
+- (void)applyFontSmoothing:(NSInteger)level {
     CFStringRef key = CFSTR("AppleFontSmoothing");
     if (level < 0) {
         CFPreferencesSetValue(key, NULL, kCFPreferencesAnyApplication,
@@ -792,30 +791,55 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
                              kCFPreferencesCurrentUser, kCFPreferencesCurrentHost);
 }
 
-- (NSMenuItem *)fontSmoothingItem {
-    NSMenuItem *parent = [[NSMenuItem alloc] initWithTitle:@"Text smoothing"
-                                                    action:nil keyEquivalent:@""];
-    parent.image = ddSymbol(@"textformat.size");
-    NSMenu *sub = [[NSMenu alloc] init];
-    sub.autoenablesItems = NO;
+- (void)fontSmoothingSegmentChanged:(NSSegmentedControl *)seg {
+    [self applyFontSmoothing:seg.selectedSegment];   // 0 = Off … 3 = Strong
+}
+
+// Inline segmented row: "Text smoothing  [ Off · Light · Medium · Strong ]".
+- (NSMenuItem *)fontSmoothingRowItem {
+    NSView *row = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, kSliderRowWidth, 28)];
+
+    NSImageView *iconView = [NSImageView imageViewWithImage:ddSymbol(@"textformat.size")];
+    iconView.imageScaling = NSImageScaleProportionallyDown;
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    [row addSubview:iconView];
+
+    NSTextField *name = [NSTextField labelWithString:@"Text smoothing"];
+    name.font = [NSFont menuFontOfSize:13];
+    name.translatesAutoresizingMaskIntoConstraints = NO;
+    [name setContentHuggingPriority:NSLayoutPriorityDefaultHigh
+                     forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [row addSubview:name];
+
+    NSSegmentedControl *seg = [NSSegmentedControl
+        segmentedControlWithLabels:@[@"Off", @"Light", @"Medium", @"Strong"]
+                      trackingMode:NSSegmentSwitchTrackingSelectOne
+                            target:self action:@selector(fontSmoothingSegmentChanged:)];
+    seg.controlSize = NSControlSizeMini;
+    seg.segmentStyle = NSSegmentStyleRounded;
+    seg.translatesAutoresizingMaskIntoConstraints = NO;
     NSInteger cur = [self currentFontSmoothing];
-    NSArray<NSArray *> *opts = @[ @[@"System default", @(-1)], @[@"Off", @0],
-                                  @[@"Light", @1], @[@"Medium", @2], @[@"Strong", @3] ];
-    for (NSArray *o in opts) {
-        NSMenuItem *it = [[NSMenuItem alloc] initWithTitle:o[0]
-            action:@selector(chooseFontSmoothing:) keyEquivalent:@""];
-        it.target = self;
-        it.representedObject = o[1];
-        it.state = ([o[1] integerValue] == cur) ? NSControlStateValueOn : NSControlStateValueOff;
-        [sub addItem:it];
-    }
-    [sub addItem:[NSMenuItem separatorItem]];
-    NSMenuItem *hint = [[NSMenuItem alloc] initWithTitle:@"Log out & back in to apply"
-                                                  action:nil keyEquivalent:@""];
-    hint.enabled = NO;
-    [sub addItem:hint];
-    parent.submenu = sub;
-    return parent;
+    seg.selectedSegment = (cur >= 0 && cur <= 3) ? cur : -1;   // unset → nothing selected
+    seg.toolTip = @"Log out and back in for the change to take effect";
+    [row addSubview:seg];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [row.heightAnchor constraintEqualToConstant:28],
+        [iconView.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:14],
+        [iconView.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:16],
+        [iconView.heightAnchor constraintEqualToConstant:16],
+        [name.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:7],
+        [name.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [seg.leadingAnchor constraintGreaterThanOrEqualToAnchor:name.trailingAnchor constant:10],
+        [seg.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-12],
+        [seg.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+    ]];
+
+    NSMenuItem *item = [[NSMenuItem alloc] init];
+    item.tag = kSliderItemTag;   // sized to the menu width like the slider rows
+    item.view = row;
+    return item;
 }
 
 - (NSArray<DDDisplayMode *> *)curatedModes:(NSArray<DDDisplayMode *> *)modes

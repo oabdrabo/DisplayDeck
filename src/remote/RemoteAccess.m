@@ -110,6 +110,13 @@ static NSString *const kDefaultRelayPort = @"22";
     [[NSUserDefaults standardUserDefaults] setObject:(port.length ? port : kDefaultRelayPort) forKey:kRelayPortKey];
     [self reconnect];
 }
+- (void)setRelayHost:(NSString *)host user:(NSString *)user port:(NSString *)port {
+    NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
+    [d setObject:(host ?: @"") forKey:kRelayHostKey];
+    [d setObject:(user.length ? user : kDefaultRelayUser) forKey:kRelayUserKey];
+    [d setObject:(port.length ? port : kDefaultRelayPort) forKey:kRelayPortKey];
+    [self reconnect];
+}
 
 // Pick up new relay settings live: drop the current tunnel; the termination
 // handler relaunches it (reading the fresh config). No-op if not enabled.

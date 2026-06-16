@@ -33,6 +33,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setRelayHost:(NSString *)host;
 - (void)setRelayUser:(NSString *)user;
 - (void)setRelayPort:(NSString *)port;
+- (void)setRelayHost:(NSString *)host user:(NSString *)user port:(NSString *)port;  // all at once
 
 // Restore on launch if previously enabled.
 - (void)restoreIfEnabled;

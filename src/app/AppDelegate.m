@@ -432,7 +432,6 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
         grant.image = ddSymbol(@"macwindow.badge.plus");
         grant.toolTip = @"Grant Accessibility permission to snap windows";
         [menu addItem:grant];
-        [self addSnapTogglesToMenu:menu];
         return;
     }
 
@@ -466,16 +465,12 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [sm addItem:[self snapItem:@"Maximize" layout:DDSnapMaximize key:@"\r"]];
     [sm addItem:[self snapItem:@"Center"   layout:DDSnapCenter   key:@"c"]];
     [sm addItem:[self snapItem:@"Restore"  layout:DDSnapRestore  key:@"z"]];
+    [sm addItem:[NSMenuItem separatorItem]];
+    [sm addItem:[self checkItemWithTitle:@"Snap by dragging" key:kSnapDrag]];
+    [sm addItem:[self checkItemWithTitle:@"Keyboard shortcuts (⌃⌥)" key:kSnapShortcuts]];
 
     root.submenu = sm;
     [menu addItem:root];
-    [self addSnapTogglesToMenu:menu];
-}
-
-// The snap behaviour toggles live with the Window section (not buried in Settings).
-- (void)addSnapTogglesToMenu:(NSMenu *)menu {
-    [menu addItem:[self checkItemWithTitle:@"Snap by dragging" key:kSnapDrag]];
-    [menu addItem:[self checkItemWithTitle:@"Keyboard shortcuts (⌃⌥)" key:kSnapShortcuts]];
 }
 
 - (void)snapMenu:(NSMenuItem *)sender {

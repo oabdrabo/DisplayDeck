@@ -368,14 +368,14 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 
     [m addItem:[self switchRow:@"Enabled" icon:@"mug"
                             on:caf.active action:@selector(keepAwakeSwitchToggled:)
-                         width:200]];
+                         width:kSliderRowWidth]];
 
     if (caf.active && caf.expiry) {
         NSDateFormatter *df = [[NSDateFormatter alloc] init];
         df.timeStyle = NSDateFormatterShortStyle;
         df.dateStyle = NSDateFormatterNoStyle;
         [self addLabelToMenu:m title:
-            [NSString stringWithFormat:@"   Awake until %@", [df stringFromDate:caf.expiry]]];
+            [NSString stringWithFormat:@"Awake until %@", [df stringFromDate:caf.expiry]]];
     }
 
     [m addItem:[NSMenuItem sectionHeaderWithTitle:@"For a set time"]];
@@ -389,6 +389,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
         [m addItem:di];
     }
 
+    [self sizeSliderRowsInMenu:m];   // toggle row stretches to the submenu's natural width
     root.submenu = m;
     [menu addItem:root];
 }
@@ -502,23 +503,23 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     // Toggle
     [m addItem:[self switchRow:@"Enabled" icon:@"network"
                             on:ra.isEnabled action:@selector(remoteSwitchToggled:)
-                            width:300]];   // match the relay field row → flush-right toggle
+                            width:kSliderRowWidth]];
 
-    // Relay (inline)
+    // Relay (inline, full-width field)
     [m addItem:[NSMenuItem sectionHeaderWithTitle:@"Relay"]];
     NSString *endpoint = ra.isConfigured
         ? [NSString stringWithFormat:@"%@@%@:%@", ra.relayUser, ra.relayHost, ra.relayPort]
         : @"";
-    [m addItem:[self relayFieldRow:@"Relay" value:endpoint placeholder:@"tunnel@host:22"
+    [m addItem:[self relayFieldRow:endpoint placeholder:@"tunnel@host:22"
                             action:@selector(relayEndpointFieldChanged:)]];
     NSString *state;
     if (!ra.isConfigured)    state = @"⚠ Set the relay above";
     else if (!ra.isEnabled)  state = @"○ Off";
     else                     state = ra.isConnected ? @"● Connected" : @"○ Connecting…";
-    [self addLabelToMenu:m title:[@"   " stringByAppendingString:state]];
+    [self addLabelToMenu:m title:state];
     if (ra.isConfigured) {
         [self addLabelToMenu:m title:
-            [NSString stringWithFormat:@"   this Mac → ssh %d · vnc %d", ra.sshPort, ra.vncPort]];
+            [NSString stringWithFormat:@"This Mac · ssh %d · vnc %d", ra.sshPort, ra.vncPort]];
     }
     NSMenuItem *key = [[NSMenuItem alloc] initWithTitle:@"Copy this Mac's relay key"
         action:@selector(copyRemoteAuthLine:) keyEquivalent:@""];
@@ -529,7 +530,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [m addItem:[NSMenuItem sectionHeaderWithTitle:@"Connect to a Mac"]];
     NSArray<NSDictionary *> *peers = ra.peers;
     if (peers.count == 0) {
-        [self addLabelToMenu:m title:@"   No other Macs found"];
+        [self addLabelToMenu:m title:@"No other Macs found"];
     }
     for (NSDictionary *peer in peers) {
         NSMenuItem *ss = [[NSMenuItem alloc] initWithTitle:
@@ -548,6 +549,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     refresh.target = self; refresh.image = ddSymbol(@"arrow.clockwise");
     [m addItem:refresh];
 
+    [self sizeSliderRowsInMenu:m];   // stretch toggle/field rows to the submenu's natural width
     root.submenu = m;
     [menu addItem:root];
 }
@@ -602,20 +604,11 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 
 // Inline editable row (label + text field) — edited in place in the menu, like
 // the sliders, instead of a popup. Commits on Return / when focus leaves.
-- (NSMenuItem *)relayFieldRow:(NSString *)label value:(NSString *)value
+- (NSMenuItem *)relayFieldRow:(NSString *)value
                   placeholder:(NSString *)placeholder action:(SEL)action {
-    // Wide row — these live in submenus (relay / add-a-Mac), so a roomy fixed
-    // width gives the text field space without affecting the main menu.
-    NSView *row = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 300, 30)];
-
-    NSTextField *name = [NSTextField labelWithString:label];
-    name.font = [NSFont menuFontOfSize:13];
-    name.translatesAutoresizingMaskIntoConstraints = NO;
-    [name setContentHuggingPriority:NSLayoutPriorityRequired
-                     forOrientation:NSLayoutConstraintOrientationHorizontal];
-    [name setContentCompressionResistancePriority:NSLayoutPriorityRequired
-                                   forOrientation:NSLayoutConstraintOrientationHorizontal];
-    [row addSubview:name];
+    // Full-width inline field — no label (the section header already says "Relay").
+    // Tagged so the submenu sizing pass stretches it to the menu's natural width.
+    NSView *row = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 200, 30)];
 
     NSTextField *field = [[NSTextField alloc] init];
     field.stringValue = value ?: @"";
@@ -632,14 +625,13 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 
     [NSLayoutConstraint activateConstraints:@[
         [row.heightAnchor constraintEqualToConstant:30],
-        [name.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:16],
-        [name.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [field.leadingAnchor constraintEqualToAnchor:name.trailingAnchor constant:8],
+        [field.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:14],
         [field.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-14],
         [field.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
     ]];
 
     NSMenuItem *item = [[NSMenuItem alloc] init];
+    item.tag = kSliderItemTag;
     item.view = row;
     return item;
 }

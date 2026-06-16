@@ -491,15 +491,13 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
         [sm addItem:status];
     }
 
-    // ---- Relay settings (editable) ----
+    // ---- Relay (single user@host:port endpoint) ----
     [sm addItem:[NSMenuItem separatorItem]];
-    [sm addItem:[NSMenuItem sectionHeaderWithTitle:@"Relay"]];
-    [sm addItem:[self relayFieldRow:@"Host" value:ra.relayHost placeholder:@"IP or domain"
-                             action:@selector(relayHostFieldChanged:)]];
-    [sm addItem:[self relayFieldRow:@"User" value:ra.relayUser placeholder:@"tunnel"
-                             action:@selector(relayUserFieldChanged:)]];
-    [sm addItem:[self relayFieldRow:@"Port" value:ra.relayPort placeholder:@"22"
-                             action:@selector(relayPortFieldChanged:)]];
+    NSString *endpoint = ra.isConfigured
+        ? [NSString stringWithFormat:@"%@@%@:%@", ra.relayUser, ra.relayHost, ra.relayPort]
+        : @"";
+    [sm addItem:[self relayFieldRow:@"Relay" value:endpoint placeholder:@"tunnel@host:22"
+                             action:@selector(relayEndpointFieldChanged:)]];
 
     // ---- Copy helpers ----
     [sm addItem:[NSMenuItem separatorItem]];
@@ -559,9 +557,30 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 - (NSString *)trimmed:(NSString *)s {
     return [s stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 }
-- (void)relayHostFieldChanged:(NSTextField *)f { [[RemoteAccess shared] setRelayHost:[self trimmed:f.stringValue]]; }
-- (void)relayUserFieldChanged:(NSTextField *)f { [[RemoteAccess shared] setRelayUser:[self trimmed:f.stringValue]]; }
-- (void)relayPortFieldChanged:(NSTextField *)f { [[RemoteAccess shared] setRelayPort:[self trimmed:f.stringValue]]; }
+
+// Parse a single "[user@]host[:port]" endpoint into the three settings.
+- (void)relayEndpointFieldChanged:(NSTextField *)f {
+    NSString *s = [self trimmed:f.stringValue];
+    RemoteAccess *ra = [RemoteAccess shared];
+    if (s.length == 0) { [ra setRelayHost:@"" user:nil port:nil]; return; }
+
+    NSString *user = nil, *host = s, *port = nil;
+    NSRange at = [s rangeOfString:@"@"];
+    if (at.location != NSNotFound) {
+        user = [s substringToIndex:at.location];
+        host = [s substringFromIndex:NSMaxRange(at)];
+    }
+    NSRange colon = [host rangeOfString:@":" options:NSBackwardsSearch];
+    if (colon.location != NSNotFound) {
+        NSString *p = [host substringFromIndex:NSMaxRange(colon)];
+        NSCharacterSet *nonDigit = [[NSCharacterSet decimalDigitCharacterSet] invertedSet];
+        if (p.length && [p rangeOfCharacterFromSet:nonDigit].location == NSNotFound) {
+            port = p;
+            host = [host substringToIndex:colon.location];
+        }
+    }
+    [ra setRelayHost:[self trimmed:host] user:[self trimmed:(user ?: @"")] port:port];
+}
 
 - (void)toggleRemoteAccess:(id)sender {
     (void)sender;

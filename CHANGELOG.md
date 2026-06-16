@@ -2,6 +2,16 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.3.0] — 2026-06-16
+
+### Added
+- **Window management (tiling / snapping).** Snap the focused window to **halves, quarters, thirds & two-thirds, maximize, center, or restore** — three ways:
+  - **Global keyboard shortcuts** — `⌃⌥` + arrows (halves), `⌃⌥` + U/I/J/K (quarters), `⌃⌥` + D/F/G (thirds), `⌃⌥` + E/T (two-thirds), `⌃⌥` + Return (maximize), `⌃⌥` + C (center), `⌃⌥` + Z (restore).
+  - **Drag to snap** — drag a window to a screen edge or corner and it tiles, with a live preview (Magnet-style).
+  - **Menu** — a "Window" section listing every layout.
+
+  Uses the Accessibility API (the same permission as Picture-in-Picture) — works on a stock machine, no SIP changes. Keyboard shortcuts and drag-to-snap can each be toggled under **Settings → Window**.
+
 ## [2.2.2] — 2026-06-16
 
 ### Fixed
@@ -47,6 +57,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ### Added
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
+[2.3.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.0
 [2.2.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.2.2
 [2.2.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.2.1
 [2.2.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.2.0

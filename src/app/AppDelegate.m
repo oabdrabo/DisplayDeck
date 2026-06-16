@@ -4,6 +4,7 @@
 #import "HiDPIInjector.h"
 #import "WindowTransparency.h"
 #import "WindowPiP.h"
+#import "WindowManager.h"
 #import "BrightnessBooster.h"
 #import "ColorTemperature.h"
 #import "Caffeine.h"
@@ -17,6 +18,8 @@ static NSString * const kConfirmDisable    = @"ConfirmBeforeDisable";
 static NSString * const kShowResolutions   = @"ShowResolutions";
 static NSString * const kFrostedBlur        = @"FrostedBlur";
 static NSString * const kDidSetupLogin      = @"DidSetupLoginItem";
+static NSString * const kSnapShortcuts      = @"WindowSnapShortcuts";
+static NSString * const kSnapDrag           = @"WindowSnapDrag";
 
 static NSString * const kAutoManageNotifID = @"auto-manage";
 
@@ -108,6 +111,9 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 
     UNUserNotificationCenter.currentNotificationCenter.delegate = self;
 
+    [[WindowManager shared] setHotkeysEnabled:[self pref:kSnapShortcuts]];
+    [[WindowManager shared] setDragSnapEnabled:[self pref:kSnapDrag]];
+
     [self setupStatusItems];
     [self rebuildMenu];
 
@@ -145,6 +151,8 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
         kConfirmDisable:    @YES,
         kShowResolutions:   @YES,
         kFrostedBlur:       @YES,
+        kSnapShortcuts:     @YES,
+        kSnapDrag:          @YES,
     }];
 }
 
@@ -251,6 +259,9 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
         [self addDisplaySectionToMenu:menu display:display];
     }
 
+    [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Window"]];
+    [self addWindowSectionToMenu:menu];
+
     [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Transparency"]];
     [self addTransparencySectionToMenu:menu];
 
@@ -320,6 +331,72 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     item.representedObject = @(did);
     if (symbol) item.image = ddSymbol(symbol);
     return item;
+}
+
+#pragma mark - Window management
+
+- (NSMenuItem *)snapItem:(NSString *)title layout:(DDSnap)layout key:(NSString *)key {
+    NSMenuItem *it = [[NSMenuItem alloc] initWithTitle:title
+                                                action:@selector(snapMenu:) keyEquivalent:key];
+    it.keyEquivalentModifierMask = NSEventModifierFlagControl | NSEventModifierFlagOption;
+    it.target = self;
+    it.representedObject = @(layout);
+    return it;
+}
+
+- (void)addWindowSectionToMenu:(NSMenu *)menu {
+    if (![[WindowManager shared] hasAccessibility]) {
+        NSMenuItem *grant = [[NSMenuItem alloc]
+            initWithTitle:@"Enable window snapping (Accessibility)…"
+                   action:@selector(grantWindowAccess:) keyEquivalent:@""];
+        grant.target = self;
+        grant.image = ddSymbol(@"macwindow.badge.plus");
+        [menu addItem:grant];
+        return;
+    }
+
+    NSMenuItem *root = [[NSMenuItem alloc] initWithTitle:@"Snap Focused Window"
+                                                  action:nil keyEquivalent:@""];
+    root.image = ddSymbol(@"macwindow.on.rectangle");
+    NSMenu *sm = [[NSMenu alloc] init];
+    sm.autoenablesItems = NO;
+
+    NSString *L = [NSString stringWithFormat:@"%C", (unichar)NSLeftArrowFunctionKey];
+    NSString *R = [NSString stringWithFormat:@"%C", (unichar)NSRightArrowFunctionKey];
+    NSString *U = [NSString stringWithFormat:@"%C", (unichar)NSUpArrowFunctionKey];
+    NSString *D = [NSString stringWithFormat:@"%C", (unichar)NSDownArrowFunctionKey];
+
+    [sm addItem:[self snapItem:@"Left Half"   layout:DDSnapLeftHalf   key:L]];
+    [sm addItem:[self snapItem:@"Right Half"  layout:DDSnapRightHalf  key:R]];
+    [sm addItem:[self snapItem:@"Top Half"    layout:DDSnapTopHalf    key:U]];
+    [sm addItem:[self snapItem:@"Bottom Half" layout:DDSnapBottomHalf key:D]];
+    [sm addItem:[NSMenuItem separatorItem]];
+    [sm addItem:[self snapItem:@"Top Left"     layout:DDSnapTopLeft     key:@"u"]];
+    [sm addItem:[self snapItem:@"Top Right"    layout:DDSnapTopRight    key:@"i"]];
+    [sm addItem:[self snapItem:@"Bottom Left"  layout:DDSnapBottomLeft  key:@"j"]];
+    [sm addItem:[self snapItem:@"Bottom Right" layout:DDSnapBottomRight key:@"k"]];
+    [sm addItem:[NSMenuItem separatorItem]];
+    [sm addItem:[self snapItem:@"Left Third"       layout:DDSnapLeftThird       key:@"d"]];
+    [sm addItem:[self snapItem:@"Center Third"     layout:DDSnapCenterThird     key:@"f"]];
+    [sm addItem:[self snapItem:@"Right Third"      layout:DDSnapRightThird      key:@"g"]];
+    [sm addItem:[self snapItem:@"Left Two-Thirds"  layout:DDSnapLeftTwoThirds   key:@"e"]];
+    [sm addItem:[self snapItem:@"Right Two-Thirds" layout:DDSnapRightTwoThirds  key:@"t"]];
+    [sm addItem:[NSMenuItem separatorItem]];
+    [sm addItem:[self snapItem:@"Maximize" layout:DDSnapMaximize key:@"\r"]];
+    [sm addItem:[self snapItem:@"Center"   layout:DDSnapCenter   key:@"c"]];
+    [sm addItem:[self snapItem:@"Restore"  layout:DDSnapRestore  key:@"z"]];
+
+    root.submenu = sm;
+    [menu addItem:root];
+}
+
+- (void)snapMenu:(NSMenuItem *)sender {
+    [[WindowManager shared] snap:(DDSnap)[sender.representedObject integerValue]];
+}
+
+- (void)grantWindowAccess:(id)sender {
+    (void)sender;
+    [[WindowManager shared] requestAccessibility];
 }
 
 - (void)addDisplaySectionToMenu:(NSMenu *)menu display:(DDDisplayInfo *)display {
@@ -740,6 +817,10 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 
     [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Transparency"]];
     [menu addItem:[self checkItemWithTitle:@"Frosted glass blur" key:kFrostedBlur]];
+
+    [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Window"]];
+    [menu addItem:[self checkItemWithTitle:@"Snap by dragging to screen edges" key:kSnapDrag]];
+    [menu addItem:[self checkItemWithTitle:@"Keyboard shortcuts (⌃⌥ + keys)" key:kSnapShortcuts]];
 
     [menu addItem:[NSMenuItem separatorItem]];
     NSMenuItem *login = [[NSMenuItem alloc] initWithTitle:@"Launch at Login"
@@ -1179,6 +1260,12 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     if ([key isEqualToString:kFrostedBlur]) {
         [WindowTransparency shared].frostedBlur = [self pref:kFrostedBlur];
         [[WindowTransparency shared] reapplyBlurForAllWindows];
+    }
+    if ([key isEqualToString:kSnapDrag]) {
+        [[WindowManager shared] setDragSnapEnabled:[self pref:kSnapDrag]];
+    }
+    if ([key isEqualToString:kSnapShortcuts]) {
+        [[WindowManager shared] setHotkeysEnabled:[self pref:kSnapShortcuts]];
     }
 }
 

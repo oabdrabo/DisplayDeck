@@ -5,7 +5,7 @@
   <img src="assets/banner-dark.png" alt="DisplayDeck — total control of your Mac's displays and windows" width="880" />
 </picture>
 
-Disable & enable screens · Force HiDPI · brightness with EDR boost · color warmth · window transparency, blur, keep-on-top & picture-in-picture · keep-awake.
+Disable & enable screens · Force HiDPI · brightness with EDR boost · color warmth · window tiling/snapping · transparency, blur, keep-on-top & picture-in-picture · keep-awake.
 
 [![Release](https://img.shields.io/badge/release-v2.2.1-2ea44f?style=flat-square)](https://github.com/oabdrabo/DisplayDeck/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-3da639?style=flat-square)](LICENSE)
@@ -35,6 +35,7 @@ Disable & enable screens · Force HiDPI · brightness with EDR boost · color wa
 | ⤢ **Force HiDPI** | Add crisp scaled (retina) resolutions to displays that don't natively offer them, via a mirrored private `SLVirtualDisplay`, plus a "More Space" supersampling tier. Optionally writes **persistent "crisp HiDPI" override plists**. |
 | ☀️ **Brightness + boost** | Built-in panel via `DisplayServices`, externals via DDC/CI, an inline **auto-brightness** toggle, and an **EDR boost above 100%** clamped to the display's real, learned headroom (mild on a built-in, big on a true XDR/HDR panel) — colors preserved, auto-suspends in Mission Control. |
 | 🌡️ **Warmth** | Per-display color-temperature slider (f.lux / Night-Shift style) via gamma ramps — 6500 K neutral → ~3400 K warm, persisted, restores native ColorSync at 0%. |
+| 🧩 **Window snapping** | Tile the focused window to **halves, quarters, thirds / two-thirds, maximize, center**, or **restore** — via **global `⌃⌥` keyboard shortcuts**, **dragging to a screen edge/corner** (with a live preview), or the **Window** menu. Uses the Accessibility API; works on a stock machine. |
 | 🪟 **Window transparency** | Set per-app or all-window opacity for **any** app, via a self-contained scripting addition injected into Dock (no external tools). Optional **frosted-glass blur**, per-app **Keep on top**, and **Picture-in-Picture** (shrink a window into a still-usable floating corner). |
 | ☕ **Keep awake** | An IOKit caffeine assertion so the Mac and its display don't sleep — indefinitely or for a set duration. Replaces KeepingYouAwake. |
 | 🔤 **Text smoothing** | Adjust macOS's grayscale antialiasing (Off → Strong) so text isn't thin or fuzzy on external, non-Retina, or scaled monitors. Global; applies after a re-login. |
@@ -101,7 +102,7 @@ make uninstall      # removes the app + (with admin) the scripting addition & su
 
 - **macOS 14+ on Apple Silicon.**
 - **Window transparency / blur / keep-on-top** need **SIP disabled** and the `-arm64e_preview_abi` boot-arg — these allow injecting the payload into Dock. First use prompts once for an admin password to install the scripting addition; afterwards it loads silently. *(Display / HiDPI / brightness / warmth work without them.)*
-- **Picture-in-Picture** asks for Accessibility permission once.
+- **Window snapping** and **Picture-in-Picture** ask for Accessibility permission once (no SIP changes needed).
 
 ## 🔧 How it works
 
@@ -109,6 +110,7 @@ make uninstall      # removes the app + (with admin) the scripting addition & su
 - Transparency injects a payload into Dock (`task_for_pid` + an arm64e bootstrap) that calls `SLSSetWindowAlpha` / `SLSSetWindowBackgroundBlurRadius` / `SLSSetWindowLevel` over a private unix socket. The injection technique is adapted from [yabai](https://github.com/koekeishiya/yabai) (MIT); see `sa/loader.m`.
 - Warmth loads per-channel gamma ramps with the public `CGSetDisplayTransferByTable`; the brightness boost is a borderless EDR overlay (`CAMetalLayer`, multiply blend) clamped each frame to the live `maximumExtendedDynamicRangeColorComponentValue`.
 - Picture-in-Picture resizes/moves the real window through the Accessibility API (`AXUIElement`) and reuses Keep-on-top for the float.
+- Window snapping moves/resizes the focused window through the same `AXUIElement` API; global shortcuts are registered as Carbon `RegisterEventHotKey` hot keys, and drag-to-snap watches a global mouse monitor to detect edge/corner drops.
 
 Because these are private APIs, behaviour can change between macOS releases.
 
@@ -121,7 +123,7 @@ src/
   display/            DisplayManager, HiDPIInjector, Brightness,
                       BrightnessBooster (EDR boost), ColorTemperature (warmth)
   transparency/       WindowTransparency — in-app client for the Dock payload
-  window/             WindowPiP — Accessibility-based picture-in-picture
+  window/             WindowPiP — picture-in-picture; WindowManager — tiling/snapping
   power/              Caffeine — keep-awake power assertion
   common/             DDUtil — shared error/AppleScript helpers
 sa/                   scripting addition injected into Dock (loader.m, payload.m)

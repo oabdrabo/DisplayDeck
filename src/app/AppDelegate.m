@@ -330,7 +330,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Transparency"]];
     [self addTransparencySectionToMenu:menu];
 
-    [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Text"]];
+    [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Text smoothing"]];
     [menu addItem:[self fontSmoothingRowItem]];
 
     NSMenuItem *settingsItem = [[NSMenuItem alloc]
@@ -1198,7 +1198,8 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [self applyFontSmoothing:seg.selectedSegment];   // 0 = Off … 3 = Strong
 }
 
-// Inline segmented row: "Text smoothing  [ Off · Light · Medium · Strong ]".
+// Inline segmented row under the "Text smoothing" header: just the icon + the
+// strength control (the header already names it, so no redundant row label).
 - (NSMenuItem *)fontSmoothingRowItem {
     NSView *row = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, kSliderRowWidth, 28)];
 
@@ -1206,13 +1207,6 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     iconView.imageScaling = NSImageScaleProportionallyDown;
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:iconView];
-
-    NSTextField *name = [NSTextField labelWithString:@"Text smoothing"];
-    name.font = [NSFont menuFontOfSize:13];
-    name.translatesAutoresizingMaskIntoConstraints = NO;
-    [name setContentHuggingPriority:NSLayoutPriorityDefaultHigh
-                     forOrientation:NSLayoutConstraintOrientationHorizontal];
-    [row addSubview:name];
 
     NSSegmentedControl *seg = [NSSegmentedControl
         segmentedControlWithLabels:@[@"Off", @"Light", @"Medium", @"Strong"]
@@ -1232,9 +1226,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
         [iconView.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
         [iconView.widthAnchor constraintEqualToConstant:16],
         [iconView.heightAnchor constraintEqualToConstant:16],
-        [name.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:7],
-        [name.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [seg.leadingAnchor constraintGreaterThanOrEqualToAnchor:name.trailingAnchor constant:10],
+        [seg.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:10],
         [seg.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-12],
         [seg.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
     ]];

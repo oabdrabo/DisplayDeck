@@ -492,96 +492,64 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 - (void)addRemoteSectionToMenu:(NSMenu *)menu {
     RemoteAccess *ra = [RemoteAccess shared];
 
-    // One "Remote Access ▸" submenu holding the toggle, the client, and Relay.
+    // One "Remote Access ▸" submenu — everything inline, no further nesting.
     NSMenuItem *root = [[NSMenuItem alloc] initWithTitle:@"Remote Access"
                                                   action:nil keyEquivalent:@""];
     root.image = ddSymbol(@"network");
     NSMenu *m = [[NSMenu alloc] init];
     m.autoenablesItems = NO;
 
+    // Toggle
     [m addItem:[self switchRow:@"Enabled" icon:@"network"
                             on:ra.isEnabled action:@selector(remoteSwitchToggled:)
                             width:240]];
-    [m addItem:[NSMenuItem separatorItem]];
-    [m addItem:[self remoteConnectItem]];
-    [m addItem:[self remoteRelayItem]];
 
-    root.submenu = m;
-    [menu addItem:root];
-}
-
-// "Relay ▸" — endpoint field, status, this Mac's ports, and the key to authorize.
-- (NSMenuItem *)remoteRelayItem {
-    RemoteAccess *ra = [RemoteAccess shared];
-    NSMenuItem *relayItem = [[NSMenuItem alloc] initWithTitle:@"Relay"
-                                                       action:nil keyEquivalent:@""];
-    relayItem.image = ddSymbol(@"server.rack");
-    NSMenu *rm = [[NSMenu alloc] init];
-    rm.autoenablesItems = NO;
-
+    // Relay (inline)
+    [m addItem:[NSMenuItem sectionHeaderWithTitle:@"Relay"]];
     NSString *endpoint = ra.isConfigured
         ? [NSString stringWithFormat:@"%@@%@:%@", ra.relayUser, ra.relayHost, ra.relayPort]
         : @"";
-    [rm addItem:[self relayFieldRow:@"Relay" value:endpoint placeholder:@"tunnel@host:22"
-                             action:@selector(relayEndpointFieldChanged:)]];
-
+    [m addItem:[self relayFieldRow:@"Relay" value:endpoint placeholder:@"tunnel@host:22"
+                            action:@selector(relayEndpointFieldChanged:)]];
     NSString *state;
     if (!ra.isConfigured)    state = @"⚠ Set the relay above";
     else if (!ra.isEnabled)  state = @"○ Off";
     else                     state = ra.isConnected ? @"● Connected" : @"○ Connecting…";
-    [self addLabelToMenu:rm title:[@"   " stringByAppendingString:state]];
+    [self addLabelToMenu:m title:[@"   " stringByAppendingString:state]];
     if (ra.isConfigured) {
-        [self addLabelToMenu:rm title:
+        [self addLabelToMenu:m title:
             [NSString stringWithFormat:@"   this Mac → ssh %d · vnc %d", ra.sshPort, ra.vncPort]];
     }
-
-    [rm addItem:[NSMenuItem separatorItem]];
     NSMenuItem *key = [[NSMenuItem alloc] initWithTitle:@"Copy this Mac's relay key"
         action:@selector(copyRemoteAuthLine:) keyEquivalent:@""];
     key.target = self; key.image = ddSymbol(@"key");
-    [rm addItem:key];
+    [m addItem:key];
 
-    relayItem.submenu = rm;
-    return relayItem;
-}
-
-// "Connect to a Mac ▸" — the real client. Peers are auto-discovered from the relay.
-- (NSMenuItem *)remoteConnectItem {
-    NSMenuItem *connect = [[NSMenuItem alloc] initWithTitle:@"Connect to a Mac"
-                                                     action:nil keyEquivalent:@""];
-    connect.image = ddSymbol(@"display.2");
-    NSMenu *con = [[NSMenu alloc] init];
-    con.autoenablesItems = NO;
-
-    NSArray<NSDictionary *> *peers = [RemoteAccess shared].peers;
+    // Connect — auto-discovered peers, inline (no per-peer submenus)
+    [m addItem:[NSMenuItem sectionHeaderWithTitle:@"Connect to a Mac"]];
+    NSArray<NSDictionary *> *peers = ra.peers;
     if (peers.count == 0) {
-        [self addLabelToMenu:con title:@"No other Macs found"];
+        [self addLabelToMenu:m title:@"   No other Macs found"];
     }
     for (NSDictionary *peer in peers) {
-        NSMenuItem *pm = [[NSMenuItem alloc] initWithTitle:peer[@"name"] action:nil keyEquivalent:@""];
-        pm.image = ddSymbol(@"macbook");
-        NSMenu *ps = [[NSMenu alloc] init];
-        ps.autoenablesItems = NO;
-        NSMenuItem *ss = [[NSMenuItem alloc] initWithTitle:@"Screen Share"
+        NSMenuItem *ss = [[NSMenuItem alloc] initWithTitle:
+            [NSString stringWithFormat:@"%@ — Screen Share", peer[@"name"]]
             action:@selector(connectScreenShare:) keyEquivalent:@""];
         ss.target = self; ss.image = ddSymbol(@"display"); ss.representedObject = peer;
-        [ps addItem:ss];
-        NSMenuItem *sh = [[NSMenuItem alloc] initWithTitle:@"SSH (Terminal)"
+        [m addItem:ss];
+        NSMenuItem *sh = [[NSMenuItem alloc] initWithTitle:
+            [NSString stringWithFormat:@"%@ — SSH", peer[@"name"]]
             action:@selector(connectSSH:) keyEquivalent:@""];
         sh.target = self; sh.image = ddSymbol(@"terminal"); sh.representedObject = peer;
-        [ps addItem:sh];
-        pm.submenu = ps;
-        [con addItem:pm];
+        [m addItem:sh];
     }
-
-    [con addItem:[NSMenuItem separatorItem]];
     NSMenuItem *refresh = [[NSMenuItem alloc] initWithTitle:@"Refresh"
         action:@selector(refreshRemotePeers:) keyEquivalent:@""];
     refresh.target = self; refresh.image = ddSymbol(@"arrow.clockwise");
-    [con addItem:refresh];
+    [m addItem:refresh];
 
-    connect.submenu = con;
-    return connect;
+    root.submenu = m;
+    [menu addItem:root];
 }
 
 // Inline "<label>  [switch]" row — an NSSwitch like a Settings toggle. Shared by

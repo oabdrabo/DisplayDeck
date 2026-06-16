@@ -506,14 +506,16 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     relay.tag = kSliderItemTag;   // sized to the menu width like the slider rows
     [menu addItem:relay];
 
-    // Status line.
-    NSString *st;
-    if (!ra.isConfigured)    st = @"⚠ Set the relay above";
-    else if (!ra.isEnabled)  st = @"○ Off";
-    else                     st = ra.isConnected
-        ? [NSString stringWithFormat:@"● Connected · port %d", ra.sshPort]
-        : @"○ Connecting…";
-    [self addLabelToMenu:menu title:[@"   " stringByAppendingString:st]];
+    // Status line + this Mac's relay ports (so other Macs can add this one).
+    NSString *state;
+    if (!ra.isConfigured)    state = @"⚠ Set the relay above";
+    else if (!ra.isEnabled)  state = @"○ Off";
+    else                     state = ra.isConnected ? @"● Connected" : @"○ Connecting…";
+    [self addLabelToMenu:menu title:[@"   " stringByAppendingString:state]];
+    if (ra.isConfigured) {
+        [self addLabelToMenu:menu title:
+            [NSString stringWithFormat:@"   this Mac → ssh %d · vnc %d", ra.sshPort, ra.vncPort]];
+    }
 
     // Real client: connect to your *other* Macs through the relay.
     NSMenuItem *connect = [[NSMenuItem alloc] initWithTitle:@"Connect to a Mac"
@@ -545,10 +547,10 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
         [con addItem:pm];
     }];
     if (peers.count) [con addItem:[NSMenuItem separatorItem]];
-    NSMenuItem *add = [[NSMenuItem alloc] initWithTitle:@"Add a Mac…"
-        action:@selector(addRemotePeer:) keyEquivalent:@""];
-    add.target = self; add.image = ddSymbol(@"plus");
-    [con addItem:add];
+    [con addItem:[NSMenuItem sectionHeaderWithTitle:@"Add a Mac"]];
+    [con addItem:[self relayFieldRow:@"" value:@""
+                         placeholder:@"name 22596 24596 user"
+                              action:@selector(addPeerFieldChanged:)]];
     connect.submenu = con;
     [menu addItem:connect];
 
@@ -696,21 +698,8 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [self rebuildMenu];
 }
 
-// Add-a-Mac is a rare, one-time action, so a single prompt is fine here.
-- (void)addRemotePeer:(id)sender {
-    (void)sender;
-    NSAlert *alert = [[NSAlert alloc] init];
-    alert.messageText = @"Add a Mac";
-    alert.informativeText = @"Enter: name  SSH-port  Screen-Share-port  [login user]\n"
-                            @"(the ports are that Mac's “relay port” from its DisplayDeck.)";
-    NSTextField *field = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 300, 24)];
-    field.placeholderString = @"MacBook 22596 24596 omar";
-    alert.accessoryView = field;
-    [alert addButtonWithTitle:@"Add"];
-    [alert addButtonWithTitle:@"Cancel"];
-    [NSApp activateIgnoringOtherApps:YES];
-    if ([alert runModal] != NSAlertFirstButtonReturn) return;
-
+// Inline add: type "name sshPort vncPort [user]" and press Return.
+- (void)addPeerFieldChanged:(NSTextField *)field {
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
     for (NSString *p in [field.stringValue componentsSeparatedByCharactersInSet:
                          [NSCharacterSet whitespaceCharacterSet]]) {

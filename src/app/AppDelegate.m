@@ -359,17 +359,9 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 - (void)addKeepAwakeSectionToMenu:(NSMenu *)menu {
     Caffeine *caf = [Caffeine shared];
 
-    // One "Keep Awake ▸" submenu: the on/off switch and the timed durations together.
-    NSMenuItem *root = [[NSMenuItem alloc] initWithTitle:@"Keep Awake"
-                                                  action:nil keyEquivalent:@""];
-    root.image = ddSymbol(@"mug");
+    // Submenu: timed durations (opened via the chevron / hover).
     NSMenu *m = [[NSMenu alloc] init];
     m.autoenablesItems = NO;
-
-    [m addItem:[self switchRow:@"Enabled" icon:@"mug"
-                            on:caf.active action:@selector(keepAwakeSwitchToggled:)
-                         width:kSliderRowWidth]];
-
     if (caf.active && caf.expiry) {
         NSDateFormatter *df = [[NSDateFormatter alloc] init];
         df.timeStyle = NSDateFormatterShortStyle;
@@ -377,8 +369,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
         [self addLabelToMenu:m title:
             [NSString stringWithFormat:@"Awake until %@", [df stringFromDate:caf.expiry]]];
     }
-
-    [m addItem:[NSMenuItem sectionHeaderWithTitle:@"For a set time"]];
+    [m addItem:[NSMenuItem sectionHeaderWithTitle:@"Keep awake for"]];
     NSArray *durations = @[ @[@"15 minutes", @900], @[@"30 minutes", @1800],
                             @[@"1 hour", @3600], @[@"2 hours", @7200], @[@"5 hours", @18000] ];
     for (NSArray *d in durations) {
@@ -389,9 +380,61 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
         [m addItem:di];
     }
 
-    [self sizeSliderRowsInMenu:m];   // toggle row stretches to the submenu's natural width
-    root.submenu = m;
-    [menu addItem:root];
+    // Single top-level row: icon + "Keep Awake" + on/off toggle, with a ▸ chevron
+    // opening the duration submenu. The switch lives on the main row.
+    [menu addItem:[self toggleRow:@"Keep Awake" icon:@"mug" on:caf.active
+                           action:@selector(keepAwakeSwitchToggled:) submenu:m]];
+}
+
+// A main-menu row carrying its own on/off NSSwitch *and* a ▸ chevron that opens a
+// submenu. Tagged so the menu-width sizing pass stretches it flush-right.
+- (NSMenuItem *)toggleRow:(NSString *)label icon:(NSString *)symbol
+                       on:(BOOL)on action:(SEL)action submenu:(NSMenu *)submenu {
+    NSView *row = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, kSliderRowWidth, 28)];
+
+    NSImageView *icon = [NSImageView imageViewWithImage:ddSymbol(symbol)];
+    icon.imageScaling = NSImageScaleProportionallyDown;
+    icon.translatesAutoresizingMaskIntoConstraints = NO;
+    [row addSubview:icon];
+
+    NSTextField *name = [NSTextField labelWithString:label];
+    name.font = [NSFont menuFontOfSize:13];
+    name.translatesAutoresizingMaskIntoConstraints = NO;
+    [row addSubview:name];
+
+    NSImageView *chevron = [NSImageView imageViewWithImage:ddSymbol(@"chevron.right")];
+    chevron.contentTintColor = [NSColor tertiaryLabelColor];
+    chevron.translatesAutoresizingMaskIntoConstraints = NO;
+    [row addSubview:chevron];
+
+    NSSwitch *sw = [[NSSwitch alloc] init];
+    sw.state = on ? NSControlStateValueOn : NSControlStateValueOff;
+    sw.controlSize = NSControlSizeMini;
+    sw.target = self;
+    sw.action = action;
+    sw.translatesAutoresizingMaskIntoConstraints = NO;
+    [row addSubview:sw];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [row.heightAnchor constraintEqualToConstant:28],
+        [icon.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:14],
+        [icon.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [icon.widthAnchor constraintEqualToConstant:16],
+        [icon.heightAnchor constraintEqualToConstant:16],
+        [name.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:7],
+        [name.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [chevron.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-11],
+        [chevron.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [sw.trailingAnchor constraintEqualToAnchor:chevron.leadingAnchor constant:-9],
+        [sw.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [sw.leadingAnchor constraintGreaterThanOrEqualToAnchor:name.trailingAnchor constant:10],
+    ]];
+
+    NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:label action:nil keyEquivalent:@""];
+    item.tag = kSliderItemTag;   // sized to the main-menu width
+    item.view = row;
+    item.submenu = submenu;
+    return item;
 }
 
 - (void)keepAwakeFor:(NSMenuItem *)sender {
@@ -493,17 +536,10 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 - (void)addRemoteSectionToMenu:(NSMenu *)menu {
     RemoteAccess *ra = [RemoteAccess shared];
 
-    // One "Remote Access ▸" submenu — everything inline, no further nesting.
-    NSMenuItem *root = [[NSMenuItem alloc] initWithTitle:@"Remote Access"
-                                                  action:nil keyEquivalent:@""];
-    root.image = ddSymbol(@"network");
+    // The on/off toggle rides the main "Remote Access" row; everything else lives
+    // in the submenu that the ▸ chevron opens — no further nesting.
     NSMenu *m = [[NSMenu alloc] init];
     m.autoenablesItems = NO;
-
-    // Toggle
-    [m addItem:[self switchRow:@"Enabled" icon:@"network"
-                            on:ra.isEnabled action:@selector(remoteSwitchToggled:)
-                            width:kSliderRowWidth]];
 
     // Relay (inline, full-width field)
     [m addItem:[NSMenuItem sectionHeaderWithTitle:@"Relay"]];
@@ -549,9 +585,9 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     refresh.target = self; refresh.image = ddSymbol(@"arrow.clockwise");
     [m addItem:refresh];
 
-    [self sizeSliderRowsInMenu:m];   // stretch toggle/field rows to the submenu's natural width
-    root.submenu = m;
-    [menu addItem:root];
+    [self sizeSliderRowsInMenu:m];   // stretch the field row to the submenu's natural width
+    [menu addItem:[self toggleRow:@"Remote Access" icon:@"network" on:ra.isEnabled
+                           action:@selector(remoteSwitchToggled:) submenu:m]];
 }
 
 // Inline "<label>  [switch]" row — an NSSwitch like a Settings toggle. Shared by
@@ -565,11 +601,6 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     icon.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:icon];
 
-    NSTextField *name = [NSTextField labelWithString:label];
-    name.font = [NSFont menuFontOfSize:13];
-    name.translatesAutoresizingMaskIntoConstraints = NO;
-    [row addSubview:name];
-
     NSSwitch *sw = [[NSSwitch alloc] init];
     sw.state = on ? NSControlStateValueOn : NSControlStateValueOff;
     sw.controlSize = NSControlSizeMini;
@@ -578,18 +609,33 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     sw.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:sw];
 
-    [NSLayoutConstraint activateConstraints:@[
+    NSMutableArray *cons = [@[
         [row.heightAnchor constraintEqualToConstant:28],
         [icon.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:14],
         [icon.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
         [icon.widthAnchor constraintEqualToConstant:16],
         [icon.heightAnchor constraintEqualToConstant:16],
-        [name.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:7],
-        [name.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
         [sw.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-12],
         [sw.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [sw.leadingAnchor constraintGreaterThanOrEqualToAnchor:name.trailingAnchor constant:10],
-    ]];
+    ] mutableCopy];
+
+    // Label is optional — when blank (e.g. inside a self-titling submenu) the row
+    // is just the icon and the toggle.
+    if (label.length) {
+        NSTextField *name = [NSTextField labelWithString:label];
+        name.font = [NSFont menuFontOfSize:13];
+        name.translatesAutoresizingMaskIntoConstraints = NO;
+        [row addSubview:name];
+        [cons addObjectsFromArray:@[
+            [name.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:7],
+            [name.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+            [sw.leadingAnchor constraintGreaterThanOrEqualToAnchor:name.trailingAnchor constant:10],
+        ]];
+    } else {
+        [cons addObject:
+            [sw.leadingAnchor constraintGreaterThanOrEqualToAnchor:icon.trailingAnchor constant:10]];
+    }
+    [NSLayoutConstraint activateConstraints:cons];
 
     NSMenuItem *item = [[NSMenuItem alloc] init];
     item.tag = kSliderItemTag;

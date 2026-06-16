@@ -2,6 +2,15 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.4.0] — 2026-06-16
+
+### Added
+- **Remote Access — reach your Mac (and your other Macs) from anywhere, nothing to install.** DisplayDeck holds an auto-reconnecting reverse-SSH tunnel through a relay host you control (e.g. your own server), forwarding this Mac's **SSH** and **Screen Sharing** — no Tailscale, Headscale, or third-party agent. It's also a **client**: your other Macs on the same relay are **auto-discovered**, so you can **Screen Share** or **SSH** into them straight from the menu. The relay is set inline as a single `user@host:port` field; the on/off switch lives on the menu's Remote Access row.
+- **Automatic night warmth.** Warmth now eases on in the evening and back off by morning on a schedule (dusk/dawn ramps), so the screen warms automatically without touching the slider. Toggle it with the **moon** button on the Warmth row — on by default.
+
+### Changed
+- **Menu sweep for consistency.** **Keep Awake** and **Remote Access** are each a single row with an inline on/off **toggle** plus a **›** chevron that opens its options (Keep Awake's timed durations; Remote's relay + connect list). Submenus size to their content instead of a fixed wide frame, the **Snap by dragging** / **Keyboard shortcuts** toggles moved into the **Window** submenu, and the **Text smoothing** control got a proper section header.
+
 ## [2.3.5] — 2026-06-16
 
 ### Fixed
@@ -86,6 +95,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ### Added
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
+[2.4.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.4.0
 [2.3.5]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.5
 [2.3.4]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.4
 [2.3.3]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.3

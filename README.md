@@ -5,9 +5,9 @@
   <img src="assets/banner-dark.png" alt="DisplayDeck — total control of your Mac's displays and windows" width="880" />
 </picture>
 
-Disable & enable screens · Force HiDPI · brightness with EDR boost · color warmth · window tiling/snapping · transparency, blur, keep-on-top & picture-in-picture · keep-awake.
+Disable & enable screens · Force HiDPI · brightness with EDR boost · color warmth (with auto-night) · window tiling/snapping · transparency, blur, keep-on-top & picture-in-picture · keep-awake · remote access.
 
-[![Release](https://img.shields.io/badge/release-v2.2.1-2ea44f?style=flat-square)](https://github.com/oabdrabo/DisplayDeck/releases/latest)
+[![Release](https://img.shields.io/badge/release-v2.4.0-2ea44f?style=flat-square)](https://github.com/oabdrabo/DisplayDeck/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-3da639?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/macOS-14%2B-000?style=flat-square&logo=apple&logoColor=white)](#-requirements)
 [![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-555?style=flat-square)](#-requirements)
@@ -34,10 +34,11 @@ Disable & enable screens · Force HiDPI · brightness with EDR boost · color wa
 | 🖥️ **Disable / enable any display** | Turn off the built-in panel in clamshell/headless setups so it stays off when the lid opens. Optionally auto-disable the built-in whenever an external monitor connects — with a **failsafe** that re-enables the built-in if a disconnect (or a stale/phantom external entry) would otherwise leave you with no usable screen. |
 | ⤢ **Force HiDPI** | Add crisp scaled (retina) resolutions to displays that don't natively offer them, via a mirrored private `SLVirtualDisplay`, plus a "More Space" supersampling tier. Optionally writes **persistent "crisp HiDPI" override plists**. |
 | ☀️ **Brightness + boost** | Built-in panel via `DisplayServices`, externals via DDC/CI, an inline **auto-brightness** toggle, and an **EDR boost above 100%** clamped to the display's real, learned headroom (mild on a built-in, big on a true XDR/HDR panel) — colors preserved, auto-suspends in Mission Control. |
-| 🌡️ **Warmth** | Per-display color-temperature slider (f.lux / Night-Shift style) via gamma ramps — 6500 K neutral → ~3400 K warm, persisted, restores native ColorSync at 0%. |
+| 🌡️ **Warmth + auto-night** | Per-display color-temperature slider (f.lux / Night-Shift style) via gamma ramps — 6500 K neutral → ~3400 K warm, persisted, restores native ColorSync at 0%. An **automatic night schedule** (moon toggle) eases warmth on at dusk and off by morning, hands-free. |
 | 🧩 **Window snapping** | Tile the focused window to **halves, quarters, thirds / two-thirds, maximize, center**, or **restore** — via **global `⌃⌥` keyboard shortcuts**, **dragging to a screen edge/corner** (with a live preview), or the **Window** menu. Uses the Accessibility API; works on a stock machine. |
 | 🪟 **Window transparency** | Set per-app or all-window opacity for **any** app, via a self-contained scripting addition injected into Dock (no external tools). Optional **frosted-glass blur**, per-app **Keep on top**, and **Picture-in-Picture** (shrink a window into a still-usable floating corner). |
-| ☕ **Keep awake** | An IOKit caffeine assertion so the Mac and its display don't sleep — indefinitely or for a set duration. Replaces KeepingYouAwake. |
+| ☕ **Keep awake** | An IOKit caffeine assertion so the Mac and its display don't sleep — indefinitely (toggle) or for a set duration (15 min → 5 h). Replaces KeepingYouAwake. |
+| 🌐 **Remote access** | Reach this Mac — and your **other Macs** — from anywhere, with **nothing to install**. An auto-reconnecting **reverse-SSH** tunnel through a relay host *you* control forwards **SSH** and **Screen Sharing**; no Tailscale/Headscale or third-party agent. Doubles as a **client**: peers on the same relay are **auto-discovered**, so you can Screen Share or SSH into them from the menu. |
 | 🔤 **Text smoothing** | Adjust macOS's grayscale antialiasing (Off → Strong) so text isn't thin or fuzzy on external, non-Retina, or scaled monitors. Global; applies after a re-login. |
 
 The menu-bar icon is an interactive **coffee mug**: left-click toggles keep-awake (filled cup = awake), right-click opens the menu.
@@ -48,9 +49,13 @@ The menu-bar mug — an empty cup when idle, filled while keeping your Mac awake
 
 <p align="center"><img src="assets/screenshots/menubar.png" width="380" alt="Menu-bar mug icon — empty when idle, filled when keeping awake" /></p>
 
-The menu — per-display **Brightness** (with the inline **Ⓐ** auto-brightness toggle) and **Warmth** sliders, a **Window** snapping section, and per-app **Transparency** rows with frosted-glass, keep-on-top, and picture-in-picture toggles:
+The menu — a **Keep Awake** row with an inline toggle, per-display **Brightness** (with the inline **Ⓐ** auto-brightness toggle) and **Warmth** sliders (with the **🌙** auto-night toggle), a **Window** snapping section, a **Remote Access** row, and per-app **Transparency** rows with frosted-glass, keep-on-top, and picture-in-picture toggles:
 
 <p align="center"><img src="assets/screenshots/menu.png" width="300" alt="Main menu" /></p>
+
+**Remote access** — set the relay inline as a single `user@host:port`, copy this Mac's relay key, and Screen Share / SSH into your auto-discovered Macs, all from the menu:
+
+<p align="center"><img src="assets/screenshots/remote.png" width="500" alt="Remote Access submenu — relay field, status, and discovered Macs" /></p>
 
 **Window snapping** — tile the focused window to halves, quarters, thirds, maximize or center, each with a layout glyph and a global `⌃⌥` shortcut:
 
@@ -81,7 +86,7 @@ brew install --cask oabdrabo/tap/displaydeck
 ```sh
 git clone https://github.com/oabdrabo/DisplayDeck.git
 cd DisplayDeck
-make install      # builds, ad-hoc signs, copies to /Applications, launches
+make install      # builds, signs, copies to /Applications, launches
 ```
 
 Needs Xcode Command Line Tools (`xcode-select --install`). Other targets: `make` (build only), `make zip` (release artifact), `make clean`, `make uninstall`.
@@ -107,6 +112,7 @@ make uninstall      # removes the app + (with admin) the scripting addition & su
 - **macOS 14+ on Apple Silicon.**
 - **Window transparency / blur / keep-on-top** need **SIP disabled** and the `-arm64e_preview_abi` boot-arg — these allow injecting the payload into Dock. First use prompts once for an admin password to install the scripting addition; afterwards it loads silently. *(Display / HiDPI / brightness / warmth work without them.)*
 - **Window snapping** and **Picture-in-Picture** ask for Accessibility permission once (no SIP changes needed).
+- **Remote access** needs a **relay host you can SSH into** (e.g. a cheap VPS or your homelab box) with a forwarding-only `tunnel` user; nothing is installed on it beyond an `authorized_keys` line. It uses macOS's built-in `/usr/bin/ssh` plus the system **Remote Login** and **Screen Sharing** toggles (enabled for you on first use).
 
 ## 🔧 How it works
 
@@ -115,6 +121,7 @@ make uninstall      # removes the app + (with admin) the scripting addition & su
 - Warmth loads per-channel gamma ramps with the public `CGSetDisplayTransferByTable`; the brightness boost is a borderless EDR overlay (`CAMetalLayer`, multiply blend) clamped each frame to the live `maximumExtendedDynamicRangeColorComponentValue`.
 - Picture-in-Picture resizes/moves the real window through the Accessibility API (`AXUIElement`) and reuses Keep-on-top for the float.
 - Window snapping moves/resizes the focused window through the same `AXUIElement` API; global shortcuts are registered as Carbon `RegisterEventHotKey` hot keys, and drag-to-snap watches a global mouse monitor to detect edge/corner drops.
+- Remote access spawns `/usr/bin/ssh -N -R …` to publish this Mac's SSH/Screen-Sharing ports on relay loopback ports (derived from the hostname), auto-reconnecting via `NSTask`. Peer discovery is a read-only forced command on the relay that lists every authorized Mac's name and ports; connecting opens a `-L` forward to `vnc://localhost` or a `ProxyJump` SSH session.
 
 Because these are private APIs, behaviour can change between macOS releases.
 
@@ -129,6 +136,7 @@ src/
   transparency/       WindowTransparency — in-app client for the Dock payload
   window/             WindowPiP — picture-in-picture; WindowManager — tiling/snapping
   power/              Caffeine — keep-awake power assertion
+  remote/             RemoteAccess — reverse-SSH tunnel, relay config, peer discovery
   common/             DDUtil — shared error/AppleScript helpers
 sa/                   scripting addition injected into Dock (loader.m, payload.m)
 tools/                build_icon.m — generates AppIcon.icns

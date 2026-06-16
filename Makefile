@@ -10,7 +10,7 @@ INCLUDES   = -Isrc/app -Isrc/common -Isrc/display -Isrc/power \
 FRAMEWORKS = -framework Cocoa -framework CoreGraphics -framework IOKit \
              -framework ServiceManagement -framework UserNotifications \
              -framework CoreDisplay -framework Metal -framework QuartzCore \
-             -framework ApplicationServices
+             -framework ApplicationServices -framework Carbon
 SOURCES    = src/main.m \
              src/app/AppDelegate.m \
              src/common/DDUtil.m \
@@ -19,7 +19,7 @@ SOURCES    = src/main.m \
              src/display/ColorTemperature.m \
              src/power/Caffeine.m \
              src/transparency/WindowTransparency.m \
-             src/window/WindowPiP.m
+             src/window/WindowPiP.m src/window/WindowManager.m
 OBJECTS    = $(SOURCES:.m=.o)
 DEPS       = $(SOURCES:.m=.d)
 EXECUTABLE = $(APP_NAME)

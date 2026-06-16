@@ -88,7 +88,7 @@ Needs Xcode Command Line Tools (`xcode-select --install`). Other targets: `make`
 
 </details>
 
-It launches at login by default — toggle that under the menu-bar icon → **Settings → Launch at Login**. The app is **ad-hoc signed** (not notarized), so Gatekeeper may warn on first open; the Homebrew cask strips the quarantine flag for you, or right-click → **Open** once.
+It launches at login by default — toggle that under the menu-bar icon → **Settings → Launch at Login**. The app is **self-signed** (not notarized), so Gatekeeper may warn on first open. The Homebrew cask strips the quarantine flag for you, so it just opens. If you installed it manually, either run `xattr -dr com.apple.quarantine /Applications/DisplayDeck.app`, or open **System Settings → Privacy & Security → Open Anyway** (on macOS 15+ the old right-click → Open no longer works).
 
 ## 🧹 Uninstall
 

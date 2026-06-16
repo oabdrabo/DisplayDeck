@@ -15,8 +15,15 @@ static const NSTimeInterval kDDVirtualOnlineTimeout = 15.0;
 
 static const double kDDAspectTolerance = 0.005;
 
-static const double kDDHiDPIScales[] = {0.5, 0.625, 0.75, 0.875, 1.0, 1.125, 1.25, 1.5};
+static const double kDDHiDPIScales[] = {0.5, 0.625, 0.75, 0.875, 1.0, 1.125, 1.25, 1.5, 1.75, 2.0};
 static const size_t kDDHiDPIScaleCount = sizeof(kDDHiDPIScales) / sizeof(*kDDHiDPIScales);
+// A forced-HiDPI mode renders at 2x the logical ("looks-like") size, so cap the
+// rendered framebuffer absolutely rather than by a flat panel-relative scale:
+// small / 2K panels get more "More Space" options while 4K/5K panels stay
+// protected from absurd, GPU-heavy buffers.
+static const size_t kDDMaxFramebufferW = 7680;   // 8K-class rendered ceiling
+static const size_t kDDMaxFramebufferH = 4320;
+static const size_t kDDMinLogicalW     = 800;
 
 typedef struct { uint32_t width; uint32_t height; } SLVirtualDisplaySize;
 
@@ -950,6 +957,8 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
         size_t lw = (size_t)round(physical.width  * kDDHiDPIScales[i] / 2.0) * 2;
         size_t lh = (size_t)round(physical.height * kDDHiDPIScales[i] / 2.0) * 2;
         if (lw == 0 || lh == 0) continue;
+        if (lw < kDDMinLogicalW) continue;                              // skip tiny
+        if (lw * 2 > kDDMaxFramebufferW || lh * 2 > kDDMaxFramebufferH) continue;  // framebuffer ceiling
         NSString *logKey = [NSString stringWithFormat:@"%zu_%zu", lw, lh];
         if ([seenLogical containsObject:logKey]) continue;
         if ([redundantLogical containsObject:logKey]) continue;

@@ -54,6 +54,20 @@ static NSImage *ddTintedSymbol(NSString *name, NSColor *color) {
             imageWithSymbolConfiguration:cfg];
 }
 
+static const void *kDDOffSymKey = &kDDOffSymKey;
+static const void *kDDOnSymKey  = &kDDOnSymKey;
+
+// Reflect a row toggle's on/off state: accent-tinted "on" symbol when active,
+// muted symbol when off. (alternateImage doesn't render reliably for the On
+// state of a borderless image button, so we set the image explicitly.)
+static void ddSetToggle(NSButton *b, BOOL on) {
+    NSString *offSym = objc_getAssociatedObject(b, kDDOffSymKey);
+    NSString *onSym  = objc_getAssociatedObject(b, kDDOnSymKey);
+    b.state = on ? NSControlStateValueOn : NSControlStateValueOff;
+    b.image = ddTintedSymbol(on ? onSym : offSym,
+                             on ? [NSColor controlAccentColor] : [NSColor secondaryLabelColor]);
+}
+
 static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber *> *tabs,
                                      NSFont *font, NSColor *color) {
     NSMutableParagraphStyle *ps = [[NSMutableParagraphStyle alloc] init];
@@ -502,12 +516,12 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     b.bordered = NO;
     b.imagePosition = NSImageOnly;
     [b setButtonType:NSButtonTypePushOnPushOff];
-    b.image = ddTintedSymbol(offSymbol, [NSColor tertiaryLabelColor]);
-    b.alternateImage = ddTintedSymbol(onSymbol, [NSColor controlAccentColor]);
-    b.state = on ? NSControlStateValueOn : NSControlStateValueOff;
+    objc_setAssociatedObject(b, kDDOffSymKey, offSymbol, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(b, kDDOnSymKey, onSymbol, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     b.tag = tag;
     b.toolTip = tooltip;
     b.translatesAutoresizingMaskIntoConstraints = NO;
+    ddSetToggle(b, on);   // sets state + the correct tinted image
     return b;
 }
 
@@ -646,8 +660,9 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 }
 
 - (void)toggleAutoBrightness:(NSButton *)sender {
-    [[Brightness shared] setAutoBrightness:(sender.state == NSControlStateValueOn)
-                                forDisplay:(CGDirectDisplayID)sender.tag];
+    BOOL on = (sender.state == NSControlStateValueOn);
+    [[Brightness shared] setAutoBrightness:on forDisplay:(CGDirectDisplayID)sender.tag];
+    ddSetToggle(sender, on);
 }
 
 - (void)warmthSliderChanged:(NSSlider *)sender {
@@ -677,21 +692,22 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 }
 
 - (void)togglePinApp:(NSButton *)sender {
+    BOOL on = (sender.state == NSControlStateValueOn);
     NSError *error = nil;
-    [[WindowTransparency shared] setPinned:(sender.state == NSControlStateValueOn)
-                                    forApp:(pid_t)sender.tag error:&error];
+    [[WindowTransparency shared] setPinned:on forApp:(pid_t)sender.tag error:&error];
     if (error) NSLog(@"DisplayDeck: pin failed: %@", error);
+    ddSetToggle(sender, on);
 }
 
 - (void)togglePiPApp:(NSButton *)sender {
     WindowPiP *pip = [WindowPiP shared];
     if (![pip hasAccessibility]) {
         [pip requestAccessibility];
-        sender.state = NSControlStateValueOff;
+        ddSetToggle(sender, NO);
         return;
     }
     BOOL active = [pip toggleForApp:(pid_t)sender.tag];
-    sender.state = active ? NSControlStateValueOn : NSControlStateValueOff;
+    ddSetToggle(sender, active);
 }
 
 - (void)resetAllTransparency:(NSMenuItem *)sender {

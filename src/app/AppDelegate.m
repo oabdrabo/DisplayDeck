@@ -168,6 +168,11 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [[WindowManager shared] setDragSnapEnabled:[self pref:kSnapDrag]];
 
     [[RemoteAccess shared] restoreIfEnabled];
+    __weak __typeof(self) weakSelfRA = self;
+    [RemoteAccess shared].onPeersChanged = ^{
+        dispatch_async(dispatch_get_main_queue(), ^{ [weakSelfRA rebuildMenu]; });
+    };
+    [[RemoteAccess shared] refreshPeers];
 
     [self setupStatusItems];
     [self rebuildMenu];
@@ -525,16 +530,19 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [menu addItem:relayItem];
 }
 
-// "Connect to a Mac ▸" — the real client (peers + inline add).
+// "Connect to a Mac ▸" — the real client. Peers are auto-discovered from the relay.
 - (NSMenuItem *)remoteConnectItem {
     NSMenuItem *connect = [[NSMenuItem alloc] initWithTitle:@"Connect to a Mac"
                                                      action:nil keyEquivalent:@""];
     connect.image = ddSymbol(@"display.2");
     NSMenu *con = [[NSMenu alloc] init];
     con.autoenablesItems = NO;
+
     NSArray<NSDictionary *> *peers = [RemoteAccess shared].peers;
-    [peers enumerateObjectsUsingBlock:^(NSDictionary *peer, NSUInteger i, BOOL *stop) {
-        (void)stop;
+    if (peers.count == 0) {
+        [self addLabelToMenu:con title:@"No other Macs found"];
+    }
+    for (NSDictionary *peer in peers) {
         NSMenuItem *pm = [[NSMenuItem alloc] initWithTitle:peer[@"name"] action:nil keyEquivalent:@""];
         pm.image = ddSymbol(@"macbook");
         NSMenu *ps = [[NSMenu alloc] init];
@@ -547,19 +555,16 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
             action:@selector(connectSSH:) keyEquivalent:@""];
         sh.target = self; sh.image = ddSymbol(@"terminal"); sh.representedObject = peer;
         [ps addItem:sh];
-        [ps addItem:[NSMenuItem separatorItem]];
-        NSMenuItem *rm = [[NSMenuItem alloc] initWithTitle:@"Remove"
-            action:@selector(removeRemotePeer:) keyEquivalent:@""];
-        rm.target = self; rm.representedObject = @(i);
-        [ps addItem:rm];
         pm.submenu = ps;
         [con addItem:pm];
-    }];
-    if (peers.count) [con addItem:[NSMenuItem separatorItem]];
-    [con addItem:[NSMenuItem sectionHeaderWithTitle:@"Add a Mac"]];
-    [con addItem:[self relayFieldRow:@"" value:@""
-                         placeholder:@"name 22596 24596 user"
-                              action:@selector(addPeerFieldChanged:)]];
+    }
+
+    [con addItem:[NSMenuItem separatorItem]];
+    NSMenuItem *refresh = [[NSMenuItem alloc] initWithTitle:@"Refresh"
+        action:@selector(refreshRemotePeers:) keyEquivalent:@""];
+    refresh.target = self; refresh.image = ddSymbol(@"arrow.clockwise");
+    [con addItem:refresh];
+
     connect.submenu = con;
     return connect;
 }
@@ -697,24 +702,9 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 - (void)connectSSH:(NSMenuItem *)sender {
     [[RemoteAccess shared] sshPeer:sender.representedObject];
 }
-- (void)removeRemotePeer:(NSMenuItem *)sender {
-    [[RemoteAccess shared] removePeerAtIndex:[sender.representedObject unsignedIntegerValue]];
-    [self rebuildMenu];
-}
-
-// Inline add: type "name sshPort vncPort [user]" and press Return.
-- (void)addPeerFieldChanged:(NSTextField *)field {
-    NSMutableArray<NSString *> *parts = [NSMutableArray array];
-    for (NSString *p in [field.stringValue componentsSeparatedByCharactersInSet:
-                         [NSCharacterSet whitespaceCharacterSet]]) {
-        if (p.length) [parts addObject:p];
-    }
-    if (parts.count < 3) return;
-    [[RemoteAccess shared] addPeerName:parts[0]
-                                  user:(parts.count >= 4 ? parts[3] : @"")
-                                   ssh:parts[1].intValue
-                                   vnc:parts[2].intValue];
-    [self rebuildMenu];
+- (void)refreshRemotePeers:(id)sender {
+    (void)sender;
+    [[RemoteAccess shared] refreshPeers];
 }
 
 - (void)addDisplaySectionToMenu:(NSMenu *)menu display:(DDDisplayInfo *)display {
@@ -1128,6 +1118,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 
 - (void)menuNeedsUpdate:(NSMenu *)menu {
     if (menu == self.mainMenu) {
+        [[RemoteAccess shared] refreshPeers];   // async; rebuilds only if the list changed
         [self populateMainMenu:menu];
         return;
     }

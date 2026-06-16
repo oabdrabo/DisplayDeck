@@ -11,14 +11,13 @@ static NSString *const kDefaultRelayHost = @"";          // unset by default —
 static NSString *const kDefaultRelayUser = @"tunnel";
 static NSString *const kDefaultRelayPort = @"22";
 
-static NSString *const kPeersKey = @"RemotePeers";
-
 @interface RemoteAccess ()
 @property (nonatomic, strong) NSTask *task;
 @property (nonatomic) BOOL connected;
 @property (nonatomic, strong) dispatch_queue_t q;
 @property (nonatomic) NSTimeInterval backoff;
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSTask *> *forwards;  // localPort → ssh -L
+@property (nonatomic, strong) NSArray<NSDictionary *> *cachedPeers;
 @end
 
 @implementation RemoteAccess
@@ -94,12 +93,18 @@ static NSString *const kPeersKey = @"RemotePeers";
 }
 
 - (NSString *)authorizeLine {
-    // permitlisten locks the *reverse* tunnel to this Mac's own ports; local
-    // forwarding stays open so the same key can act as a client (ProxyJump /
-    // -L) to reach peer Macs' ports on the relay.
-    return [NSString stringWithFormat:
+    // Two lines for the relay's authorized_keys:
+    //  1) the forwarding key — reverse tunnel locked to this Mac's ports
+    //     (permitlisten), local forwarding open so it can also be a client.
+    //  2) the discovery key — forced read-only list-peers command, nothing else.
+    [self ensureDiscoveryKey];
+    NSString *fwd = [NSString stringWithFormat:
         @"restrict,port-forwarding,permitlisten=\"%d\",permitlisten=\"%d\" %@",
         self.sshPort, self.vncPort, self.publicKey ?: @""];
+    NSString *disc = [NSString stringWithFormat:
+        @"restrict,command=\"/usr/local/bin/dd-list-peers\" %@",
+        self.discoveryPublicKey ?: @""];
+    return [NSString stringWithFormat:@"%@\n%@", fwd, disc];
 }
 
 - (BOOL)isConfigured { return self.relayHost.length > 0; }
@@ -140,27 +145,72 @@ static NSString *const kPeersKey = @"RemotePeers";
 
 #pragma mark - Client (connect to peer Macs)
 
-- (NSArray<NSDictionary *> *)peers {
-    NSArray *p = [[NSUserDefaults standardUserDefaults] arrayForKey:kPeersKey];
-    return [p isKindOfClass:[NSArray class]] ? p : @[];
+- (NSArray<NSDictionary *> *)peers { return self.cachedPeers ?: @[]; }
+
+- (NSString *)discoveryKeyPath {
+    return [[self supportDir] stringByAppendingPathComponent:@"remote_discovery_ed25519"];
 }
 
-- (void)addPeerName:(NSString *)name user:(NSString *)user ssh:(int)ssh vnc:(int)vnc {
-    if (name.length == 0 || ssh <= 0) return;
-    NSMutableArray *p = [self.peers mutableCopy];
-    [p addObject:@{ @"name": name,
-                    @"user": user.length ? user : NSUserName(),
-                    @"ssh": @(ssh),
-                    @"vnc": @(vnc > 0 ? vnc : 0) }];
-    [[NSUserDefaults standardUserDefaults] setObject:p forKey:kPeersKey];
+- (BOOL)ensureDiscoveryKey {
+    if ([[NSFileManager defaultManager] fileExistsAtPath:[self discoveryKeyPath]]) return YES;
+    NSTask *t = [[NSTask alloc] init];
+    t.launchPath = @"/usr/bin/ssh-keygen";
+    t.arguments = @[@"-t", @"ed25519", @"-N", @"", @"-q",
+                    @"-C", [NSString stringWithFormat:@"displaydeck-discovery-%@",
+                            [[NSHost currentHost] localizedName] ?: NSUserName()],
+                    @"-f", [self discoveryKeyPath]];
+    @try { [t launch]; [t waitUntilExit]; } @catch (__unused NSException *e) { return NO; }
+    return t.terminationStatus == 0;
 }
 
-- (void)removePeerAtIndex:(NSUInteger)index {
-    NSMutableArray *p = [self.peers mutableCopy];
-    if (index < p.count) {
-        [p removeObjectAtIndex:index];
-        [[NSUserDefaults standardUserDefaults] setObject:p forKey:kPeersKey];
-    }
+- (NSString *)discoveryPublicKey {
+    NSString *pub = [[self discoveryKeyPath] stringByAppendingPathExtension:@"pub"];
+    NSString *s = [NSString stringWithContentsOfFile:pub encoding:NSUTF8StringEncoding error:NULL];
+    return [s stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+// Ask the relay's read-only list-peers command for every authorized Mac, cache it.
+- (void)refreshPeers {
+    if (!self.isConfigured || ![self ensureDiscoveryKey]) return;
+    dispatch_async(self.q, ^{
+        NSTask *t = [[NSTask alloc] init];
+        t.launchPath = @"/usr/bin/ssh";
+        t.arguments = @[
+            @"-i", [self discoveryKeyPath], @"-o", @"IdentitiesOnly=yes",
+            @"-o", @"BatchMode=yes", @"-o", @"StrictHostKeyChecking=accept-new",
+            @"-o", [NSString stringWithFormat:@"UserKnownHostsFile=%@", [self knownHosts]],
+            @"-o", @"ConnectTimeout=10",
+            @"-p", self.relayPort,
+            [NSString stringWithFormat:@"%@@%@", self.relayUser, self.relayHost] ];
+        NSPipe *pipe = [NSPipe pipe];
+        t.standardOutput = pipe;
+        t.standardError = [NSFileHandle fileHandleWithNullDevice];
+        NSData *data = nil;
+        @try {
+            [t launch];
+            data = [pipe.fileHandleForReading readDataToEndOfFile];
+            [t waitUntilExit];
+        } @catch (__unused NSException *e) { return; }
+        if (t.terminationStatus != 0) return;
+
+        NSString *out = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] ?: @"";
+        NSMutableArray<NSDictionary *> *found = [NSMutableArray array];
+        int selfSsh = self.sshPort;
+        for (NSString *line in [out componentsSeparatedByString:@"\n"]) {
+            NSArray<NSString *> *f = [line componentsSeparatedByString:@"\t"];
+            if (f.count < 3) continue;
+            int ssh = f[1].intValue, vnc = f[2].intValue;
+            if (ssh <= 0 || ssh == selfSsh) continue;   // skip ourselves
+            [found addObject:@{ @"name": f[0].length ? f[0] : @"Mac",
+                                @"user": NSUserName(),
+                                @"ssh": @(ssh), @"vnc": @(vnc) }];
+        }
+        if ([found isEqualToArray:(self.cachedPeers ?: @[])]) return;   // no change → no rebuild
+        self.cachedPeers = found;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (self.onPeersChanged) self.onPeersChanged();
+        });
+    });
 }
 
 // Common ssh args to reach the relay with only our key.

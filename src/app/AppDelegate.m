@@ -364,7 +364,8 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     // On/off switch (indefinite). Was previously only toggleable by clicking the
     // mug — no way to turn it off or start it indefinitely from the menu.
     [menu addItem:[self switchRow:@"Keep Awake" icon:@"mug"
-                               on:caf.active action:@selector(keepAwakeSwitchToggled:)]];
+                               on:caf.active action:@selector(keepAwakeSwitchToggled:)
+                            width:kSliderRowWidth]];
 
     if (caf.active && caf.expiry) {
         NSDateFormatter *df = [[NSDateFormatter alloc] init];
@@ -499,7 +500,8 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     m.autoenablesItems = NO;
 
     [m addItem:[self switchRow:@"Enabled" icon:@"network"
-                            on:ra.isEnabled action:@selector(remoteSwitchToggled:)]];
+                            on:ra.isEnabled action:@selector(remoteSwitchToggled:)
+                            width:240]];
     [m addItem:[NSMenuItem separatorItem]];
     [m addItem:[self remoteConnectItem]];
     [m addItem:[self remoteRelayItem]];
@@ -585,8 +587,8 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 // Inline "<label>  [switch]" row — an NSSwitch like a Settings toggle. Shared by
 // Keep Awake and Remote Access so on/off reads the same everywhere.
 - (NSMenuItem *)switchRow:(NSString *)label icon:(NSString *)symbol
-                       on:(BOOL)on action:(SEL)action {
-    NSView *row = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, kSliderRowWidth, 28)];
+                       on:(BOOL)on action:(SEL)action width:(CGFloat)width {
+    NSView *row = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, width, 28)];
 
     NSImageView *icon = [NSImageView imageViewWithImage:ddSymbol(symbol)];
     icon.imageScaling = NSImageScaleProportionallyDown;

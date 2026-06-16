@@ -5,6 +5,7 @@
 #import "WindowTransparency.h"
 #import "WindowPiP.h"
 #import "WindowManager.h"
+#import "RemoteAccess.h"
 #import "BrightnessBooster.h"
 #import "ColorTemperature.h"
 #import "Caffeine.h"
@@ -166,6 +167,8 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [[WindowManager shared] setHotkeysEnabled:[self pref:kSnapShortcuts]];
     [[WindowManager shared] setDragSnapEnabled:[self pref:kSnapDrag]];
 
+    [[RemoteAccess shared] restoreIfEnabled];
+
     [self setupStatusItems];
     [self rebuildMenu];
 
@@ -321,6 +324,9 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Window"]];
     [self addWindowSectionToMenu:menu];
 
+    [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Remote"]];
+    [self addRemoteSectionToMenu:menu];
+
     [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Transparency"]];
     [self addTransparencySectionToMenu:menu];
 
@@ -458,6 +464,65 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 - (void)grantWindowAccess:(id)sender {
     (void)sender;
     [[WindowManager shared] requestAccessibility];
+}
+
+#pragma mark - Remote access
+
+- (void)addRemoteSectionToMenu:(NSMenu *)menu {
+    RemoteAccess *ra = [RemoteAccess shared];
+    NSMenuItem *root = [[NSMenuItem alloc] initWithTitle:@"Remote Access"
+                                                  action:nil keyEquivalent:@""];
+    root.image = ddSymbol(@"network");
+    NSMenu *sm = [[NSMenu alloc] init];
+    sm.autoenablesItems = NO;
+
+    NSMenuItem *toggle = [[NSMenuItem alloc] initWithTitle:@"Enabled"
+        action:@selector(toggleRemoteAccess:) keyEquivalent:@""];
+    toggle.target = self;
+    toggle.state = ra.isEnabled ? NSControlStateValueOn : NSControlStateValueOff;
+    [sm addItem:toggle];
+
+    if (ra.isEnabled) {
+        [sm addItem:[NSMenuItem separatorItem]];
+        NSString *st = ra.isConnected
+            ? [NSString stringWithFormat:@"● Connected · relay port %d", ra.sshPort]
+            : @"○ Connecting…";
+        NSMenuItem *status = [[NSMenuItem alloc] initWithTitle:st action:nil keyEquivalent:@""];
+        status.enabled = NO;
+        [sm addItem:status];
+        NSMenuItem *cc = [[NSMenuItem alloc] initWithTitle:@"Copy connect command"
+            action:@selector(copyRemoteConnect:) keyEquivalent:@""];
+        cc.target = self; cc.image = ddSymbol(@"terminal");
+        [sm addItem:cc];
+        NSMenuItem *ck = [[NSMenuItem alloc] initWithTitle:@"Copy public key"
+            action:@selector(copyRemoteKey:) keyEquivalent:@""];
+        ck.target = self; ck.image = ddSymbol(@"key");
+        [sm addItem:ck];
+    }
+
+    root.submenu = sm;
+    [menu addItem:root];
+}
+
+- (void)toggleRemoteAccess:(id)sender {
+    (void)sender;
+    RemoteAccess *ra = [RemoteAccess shared];
+    if (ra.isEnabled) { [ra disable]; } else { [ra enable]; }
+    [self rebuildMenu];
+}
+
+- (void)copyRemoteConnect:(id)sender {
+    (void)sender;
+    [[NSPasteboard generalPasteboard] clearContents];
+    [[NSPasteboard generalPasteboard] setString:[RemoteAccess shared].connectCommand
+                                        forType:NSPasteboardTypeString];
+}
+
+- (void)copyRemoteKey:(id)sender {
+    (void)sender;
+    NSString *k = [RemoteAccess shared].publicKey ?: @"";
+    [[NSPasteboard generalPasteboard] clearContents];
+    [[NSPasteboard generalPasteboard] setString:k forType:NSPasteboardTypeString];
 }
 
 - (void)addDisplaySectionToMenu:(NSMenu *)menu display:(DDDisplayInfo *)display {

@@ -2,6 +2,14 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.3.4] — 2026-06-16
+
+### Fixed
+- **Homebrew install now works on macOS 14 and later.** The cask was mistakenly pinned to *exactly* Sonoma (`depends_on macos: :sonoma`), so installs on Sequoia / macOS 26 were rejected with "does not run on macOS versions other than Sonoma." It now allows `>= :sonoma`.
+
+### Changed
+- Clarified that the app is **self-signed** (not ad-hoc), and documented the macOS 15+ Gatekeeper path (**System Settings → Privacy & Security → Open Anyway**, since right-click → Open was removed). The Homebrew cask still strips the quarantine flag automatically.
+
 ## [2.3.3] — 2026-06-16
 
 ### Changed
@@ -73,6 +81,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ### Added
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
+[2.3.4]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.4
 [2.3.3]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.3
 [2.3.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.2
 [2.3.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.1

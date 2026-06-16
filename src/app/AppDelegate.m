@@ -57,6 +57,56 @@ static NSImage *ddTintedSymbol(NSString *name, NSColor *color) {
             imageWithSymbolConfiguration:cfg];
 }
 
+// A little "screen with the snapped region shaded" glyph for the Window menu,
+// like Rectangle/Magnet. Template image: the faint full-screen rect (low alpha)
+// reads as empty, the solid region (full alpha) is where the window goes — both
+// tint with the menu text colour, so it adapts to light/dark. `r` is normalised
+// (0..1, y-up = visually top).
+static NSImage *ddSnapGlyph(CGRect r) {
+    NSImage *img = [NSImage imageWithSize:NSMakeSize(26, 16) flipped:NO
+                            drawingHandler:^BOOL(NSRect dst) {
+        NSRect screen = NSInsetRect(dst, 1.5, 1.5);
+        NSBezierPath *bg = [NSBezierPath bezierPathWithRoundedRect:screen xRadius:2.5 yRadius:2.5];
+        [[NSColor colorWithWhite:0 alpha:0.30] set];
+        [bg fill];
+        bg.lineWidth = 1.0;
+        [[NSColor colorWithWhite:0 alpha:0.55] set];
+        [bg stroke];
+        NSRect rr = NSMakeRect(screen.origin.x + r.origin.x * screen.size.width,
+                               screen.origin.y + r.origin.y * screen.size.height,
+                               r.size.width  * screen.size.width,
+                               r.size.height * screen.size.height);
+        rr = NSInsetRect(rr, 0.75, 0.75);
+        [[NSColor colorWithWhite:0 alpha:1.0] set];
+        [[NSBezierPath bezierPathWithRoundedRect:rr xRadius:1.5 yRadius:1.5] fill];
+        return YES;
+    }];
+    img.template = YES;
+    return img;
+}
+
+static NSImage *ddSnapGlyphForLayout(DDSnap l) {
+    switch (l) {
+        case DDSnapLeftHalf:       return ddSnapGlyph(CGRectMake(0,      0,   0.5,    1));
+        case DDSnapRightHalf:      return ddSnapGlyph(CGRectMake(0.5,    0,   0.5,    1));
+        case DDSnapTopHalf:        return ddSnapGlyph(CGRectMake(0,    0.5,     1,  0.5));
+        case DDSnapBottomHalf:     return ddSnapGlyph(CGRectMake(0,      0,     1,  0.5));
+        case DDSnapTopLeft:        return ddSnapGlyph(CGRectMake(0,    0.5,   0.5,  0.5));
+        case DDSnapTopRight:       return ddSnapGlyph(CGRectMake(0.5,  0.5,   0.5,  0.5));
+        case DDSnapBottomLeft:     return ddSnapGlyph(CGRectMake(0,      0,   0.5,  0.5));
+        case DDSnapBottomRight:    return ddSnapGlyph(CGRectMake(0.5,    0,   0.5,  0.5));
+        case DDSnapLeftThird:      return ddSnapGlyph(CGRectMake(0,      0, 1.0/3,    1));
+        case DDSnapCenterThird:    return ddSnapGlyph(CGRectMake(1.0/3,  0, 1.0/3,    1));
+        case DDSnapRightThird:     return ddSnapGlyph(CGRectMake(2.0/3,  0, 1.0/3,    1));
+        case DDSnapLeftTwoThirds:  return ddSnapGlyph(CGRectMake(0,      0, 2.0/3,    1));
+        case DDSnapRightTwoThirds: return ddSnapGlyph(CGRectMake(1.0/3,  0, 2.0/3,    1));
+        case DDSnapMaximize:       return ddSnapGlyph(CGRectMake(0,      0,     1,    1));
+        case DDSnapCenter:         return ddSnapGlyph(CGRectMake(0.22, 0.2,  0.56,  0.6));
+        case DDSnapRestore:        return ddSymbol(@"arrow.uturn.backward");
+    }
+    return nil;
+}
+
 static const void *kDDOffSymKey = &kDDOffSymKey;
 static const void *kDDOnSymKey  = &kDDOnSymKey;
 
@@ -341,6 +391,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     it.keyEquivalentModifierMask = NSEventModifierFlagControl | NSEventModifierFlagOption;
     it.target = self;
     it.representedObject = @(layout);
+    it.image = ddSnapGlyphForLayout(layout);
     return it;
 }
 

@@ -2,6 +2,11 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.3.2] — 2026-06-16
+
+### Added
+- The **Window** snap menu now shows a **layout glyph** next to each item — a shaded region on a screen outline (Rectangle/Magnet style) — so each snap target is identifiable at a glance. Adapts to light/dark.
+
 ## [2.3.1] — 2026-06-16
 
 ### Fixed
@@ -63,6 +68,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ### Added
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
+[2.3.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.2
 [2.3.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.1
 [2.3.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.0
 [2.2.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.2.2

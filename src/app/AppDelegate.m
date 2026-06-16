@@ -271,15 +271,22 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 - (void)updateStatusIcon {
     BOOL awake = [Caffeine shared].active;
     NSString *symbolName = awake ? @"mug.fill" : @"mug";
-    NSImageSymbolConfiguration *cfg =
-        [NSImageSymbolConfiguration configurationWithPointSize:16
-                                                        weight:NSFontWeightRegular
-                                                         scale:NSImageSymbolScaleMedium];
-    NSImage *icon = [[NSImage imageWithSystemSymbolName:symbolName
-                                accessibilityDescription:@"DisplayDeck"]
-                     imageWithSymbolConfiguration:cfg];
+    NSImage *icon = [NSImage imageWithSystemSymbolName:symbolName
+                              accessibilityDescription:@"DisplayDeck"];
     [icon setTemplate:YES];
-    self.statusItem.button.image = icon;
+
+    // Scale the glyph to the *actual* menu-bar height instead of a fixed point
+    // size, so it fits every Mac — notched or standard, internal or external —
+    // and never looks oversized or clipped. ~58% of the bar thickness matches the
+    // system's own menu-bar glyphs.
+    CGFloat h = round([NSStatusBar systemStatusBar].thickness * 0.58);
+    h = MAX(15, MIN(18, h));   // clamp to the standard menu-bar glyph range
+    NSSize s = icon.size;
+    if (s.height > 0) icon.size = NSMakeSize(round(s.width * h / s.height), h);
+
+    NSStatusBarButton *button = self.statusItem.button;
+    button.image = icon;
+    button.imageScaling = NSImageScaleProportionallyDown;  // safety net: shrink, never crop
 }
 
 - (void)statusItemClicked:(id)sender {

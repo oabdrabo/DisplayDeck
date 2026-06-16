@@ -2,6 +2,11 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.3.5] — 2026-06-16
+
+### Fixed
+- **Menu-bar mug icon no longer looks oversized or clipped on some Macs.** It now scales to the actual menu-bar height (clamped to the standard 15–18pt glyph range) instead of a fixed point size, so it fits correctly on standard (non-notched) menu bars and external displays, not just notched MacBooks.
+
 ## [2.3.4] — 2026-06-16
 
 ### Fixed
@@ -81,6 +86,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ### Added
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
+[2.3.5]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.5
 [2.3.4]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.4
 [2.3.3]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.3
 [2.3.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.2

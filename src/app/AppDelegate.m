@@ -492,32 +492,46 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 - (void)addRemoteSectionToMenu:(NSMenu *)menu {
     RemoteAccess *ra = [RemoteAccess shared];
 
-    // On/off as an inline switch row at the top level — like the other controls,
-    // not a checkmark buried in a submenu.
+    // ---- Top level: the on/off switch + the client ----
     [menu addItem:[self switchRow:@"Remote Access" icon:@"network"
                                on:ra.isEnabled action:@selector(remoteSwitchToggled:)]];
+    [menu addItem:[self remoteConnectItem]];
 
-    // Relay endpoint (single user@host:port field, sized to the menu width).
+    // ---- Everything else (relay config, status, key) in a Relay submenu ----
+    NSMenuItem *relayItem = [[NSMenuItem alloc] initWithTitle:@"Relay"
+                                                       action:nil keyEquivalent:@""];
+    relayItem.image = ddSymbol(@"server.rack");
+    NSMenu *rm = [[NSMenu alloc] init];
+    rm.autoenablesItems = NO;
+
     NSString *endpoint = ra.isConfigured
         ? [NSString stringWithFormat:@"%@@%@:%@", ra.relayUser, ra.relayHost, ra.relayPort]
         : @"";
-    NSMenuItem *relay = [self relayFieldRow:@"Relay" value:endpoint placeholder:@"tunnel@host:22"
-                                     action:@selector(relayEndpointFieldChanged:)];
-    relay.tag = kSliderItemTag;   // sized to the menu width like the slider rows
-    [menu addItem:relay];
+    [rm addItem:[self relayFieldRow:@"Relay" value:endpoint placeholder:@"tunnel@host:22"
+                             action:@selector(relayEndpointFieldChanged:)]];
 
-    // Status line + this Mac's relay ports (so other Macs can add this one).
     NSString *state;
     if (!ra.isConfigured)    state = @"⚠ Set the relay above";
     else if (!ra.isEnabled)  state = @"○ Off";
     else                     state = ra.isConnected ? @"● Connected" : @"○ Connecting…";
-    [self addLabelToMenu:menu title:[@"   " stringByAppendingString:state]];
+    [self addLabelToMenu:rm title:[@"   " stringByAppendingString:state]];
     if (ra.isConfigured) {
-        [self addLabelToMenu:menu title:
+        [self addLabelToMenu:rm title:
             [NSString stringWithFormat:@"   this Mac → ssh %d · vnc %d", ra.sshPort, ra.vncPort]];
     }
 
-    // Real client: connect to your *other* Macs through the relay.
+    [rm addItem:[NSMenuItem separatorItem]];
+    NSMenuItem *key = [[NSMenuItem alloc] initWithTitle:@"Copy this Mac's relay key"
+        action:@selector(copyRemoteAuthLine:) keyEquivalent:@""];
+    key.target = self; key.image = ddSymbol(@"key");
+    [rm addItem:key];
+
+    relayItem.submenu = rm;
+    [menu addItem:relayItem];
+}
+
+// "Connect to a Mac ▸" — the real client (peers + inline add).
+- (NSMenuItem *)remoteConnectItem {
     NSMenuItem *connect = [[NSMenuItem alloc] initWithTitle:@"Connect to a Mac"
                                                      action:nil keyEquivalent:@""];
     connect.image = ddSymbol(@"display.2");
@@ -552,14 +566,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
                          placeholder:@"name 22596 24596 user"
                               action:@selector(addPeerFieldChanged:)]];
     connect.submenu = con;
-    [menu addItem:connect];
-
-    // The one genuinely useful copy: this Mac's forwarding-only key line, to
-    // authorize it on the relay (paste into kk0s config/tunnel-authorized-keys).
-    NSMenuItem *key = [[NSMenuItem alloc] initWithTitle:@"Copy this Mac's relay key"
-        action:@selector(copyRemoteAuthLine:) keyEquivalent:@""];
-    key.target = self; key.image = ddSymbol(@"key");
-    [menu addItem:key];
+    return connect;
 }
 
 // Inline "<label>  [switch]" row — an NSSwitch like a Settings toggle. Shared by

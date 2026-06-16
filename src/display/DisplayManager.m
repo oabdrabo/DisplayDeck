@@ -3,6 +3,7 @@
 #import <AppKit/AppKit.h>
 #import <IOKit/IOKitLib.h>
 #import <IOKit/graphics/IOGraphicsLib.h>
+#import <Metal/Metal.h>
 #import <objc/runtime.h>
 #include <math.h>
 #include <os/log.h>
@@ -20,10 +21,8 @@ static const size_t kDDHiDPIScaleCount = sizeof(kDDHiDPIScales) / sizeof(*kDDHiD
 // A forced-HiDPI mode renders at 2x the logical ("looks-like") size, so cap the
 // rendered framebuffer absolutely rather than by a flat panel-relative scale:
 // small / 2K panels get more "More Space" options while 4K/5K panels stay
-// protected from absurd, GPU-heavy buffers.
-static const size_t kDDMaxFramebufferW = 7680;   // 8K-class rendered ceiling
-static const size_t kDDMaxFramebufferH = 4320;
-static const size_t kDDMinLogicalW     = 800;
+// protected. The ceiling auto-tunes to the GPU (see +maxHiDPIFramebuffer).
+static const size_t kDDMinLogicalW = 800;
 
 typedef struct { uint32_t width; uint32_t height; } SLVirtualDisplaySize;
 
@@ -199,6 +198,21 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
         instance = [[DisplayManager alloc] init];
     });
     return instance;
+}
+
++ (CGSize)maxHiDPIFramebuffer {
+    static CGSize cap;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        id<MTLDevice> dev = MTLCreateSystemDefaultDevice();
+        uint64_t budget = dev ? dev.recommendedMaxWorkingSetSize : 0;   // unified-memory budget
+        const uint64_t GB = 1024ULL * 1024 * 1024;
+        if      (budget >= 16 * GB) cap = CGSizeMake(10240, 5760);  // Max/Ultra-class
+        else if (budget >=  8 * GB) cap = CGSizeMake(7680, 4320);   // Pro / 16GB+
+        else if (budget >=  4 * GB) cap = CGSizeMake(6400, 3600);   // base M, 8GB
+        else                        cap = CGSizeMake(5120, 2880);   // conservative fallback
+    });
+    return cap;
 }
 
 - (BOOL)performDisplayConfig:(DisplayConfigBlock)block error:(NSError **)error {
@@ -958,7 +972,8 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
         size_t lh = (size_t)round(physical.height * kDDHiDPIScales[i] / 2.0) * 2;
         if (lw == 0 || lh == 0) continue;
         if (lw < kDDMinLogicalW) continue;                              // skip tiny
-        if (lw * 2 > kDDMaxFramebufferW || lh * 2 > kDDMaxFramebufferH) continue;  // framebuffer ceiling
+        CGSize fbCap = [DisplayManager maxHiDPIFramebuffer];            // auto-tuned to the GPU
+        if (lw * 2 > (size_t)fbCap.width || lh * 2 > (size_t)fbCap.height) continue;
         NSString *logKey = [NSString stringWithFormat:@"%zu_%zu", lw, lh];
         if ([seenLogical containsObject:logKey]) continue;
         if ([redundantLogical containsObject:logKey]) continue;

@@ -494,13 +494,12 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     // ---- Relay settings (editable) ----
     [sm addItem:[NSMenuItem separatorItem]];
     [sm addItem:[NSMenuItem sectionHeaderWithTitle:@"Relay"]];
-    [sm addItem:[self relayItem:[NSString stringWithFormat:@"Host:  %@",
-                    ra.relayHost.length ? ra.relayHost : @"(not set)"]
-                         action:@selector(editRelayHost:)]];
-    [sm addItem:[self relayItem:[NSString stringWithFormat:@"User:  %@", ra.relayUser]
-                         action:@selector(editRelayUser:)]];
-    [sm addItem:[self relayItem:[NSString stringWithFormat:@"SSH port:  %@", ra.relayPort]
-                         action:@selector(editRelayPort:)]];
+    [sm addItem:[self relayFieldRow:@"Host" value:ra.relayHost placeholder:@"IP or domain"
+                             action:@selector(relayHostFieldChanged:)]];
+    [sm addItem:[self relayFieldRow:@"User" value:ra.relayUser placeholder:@"tunnel"
+                             action:@selector(relayUserFieldChanged:)]];
+    [sm addItem:[self relayFieldRow:@"Port" value:ra.relayPort placeholder:@"22"
+                             action:@selector(relayPortFieldChanged:)]];
 
     // ---- Copy helpers ----
     [sm addItem:[NSMenuItem separatorItem]];
@@ -518,47 +517,51 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [menu addItem:root];
 }
 
-- (NSMenuItem *)relayItem:(NSString *)title action:(SEL)action {
-    NSMenuItem *it = [[NSMenuItem alloc] initWithTitle:title action:action keyEquivalent:@""];
-    it.target = self;
-    return it;
+// Inline editable row (label + text field) — edited in place in the menu, like
+// the sliders, instead of a popup. Commits on Return / when focus leaves.
+- (NSMenuItem *)relayFieldRow:(NSString *)label value:(NSString *)value
+                  placeholder:(NSString *)placeholder action:(SEL)action {
+    NSView *row = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 260, 30)];
+
+    NSTextField *name = [NSTextField labelWithString:label];
+    name.font = [NSFont menuFontOfSize:13];
+    name.translatesAutoresizingMaskIntoConstraints = NO;
+    [row addSubview:name];
+
+    NSTextField *field = [[NSTextField alloc] init];
+    field.stringValue = value ?: @"";
+    field.placeholderString = placeholder;
+    field.font = [NSFont monospacedSystemFontOfSize:12 weight:NSFontWeightRegular];
+    field.controlSize = NSControlSizeSmall;
+    field.bezelStyle = NSTextFieldRoundedBezel;
+    field.editable = YES;
+    field.selectable = YES;
+    field.target = self;
+    field.action = action;     // Return / end-editing
+    field.translatesAutoresizingMaskIntoConstraints = NO;
+    [row addSubview:field];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [row.heightAnchor constraintEqualToConstant:30],
+        [name.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:16],
+        [name.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [name.widthAnchor constraintEqualToConstant:52],
+        [field.leadingAnchor constraintEqualToAnchor:name.trailingAnchor constant:6],
+        [field.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-14],
+        [field.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+    ]];
+
+    NSMenuItem *item = [[NSMenuItem alloc] init];
+    item.view = row;
+    return item;
 }
 
-// Small modal text prompt (accessory app — activate first so it takes focus).
-- (NSString *)promptValue:(NSString *)info default:(NSString *)def {
-    NSAlert *alert = [[NSAlert alloc] init];
-    alert.messageText = @"DisplayDeck — Remote Access";
-    alert.informativeText = info;
-    NSTextField *field = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 280, 24)];
-    field.stringValue = def ?: @"";
-    alert.accessoryView = field;
-    [alert addButtonWithTitle:@"Save"];
-    [alert addButtonWithTitle:@"Cancel"];
-    [NSApp activateIgnoringOtherApps:YES];
-    NSModalResponse r = [alert runModal];
-    if (r != NSAlertFirstButtonReturn) return nil;
-    return [field.stringValue stringByTrimmingCharactersInSet:
-            [NSCharacterSet whitespaceAndNewlineCharacterSet]];
+- (NSString *)trimmed:(NSString *)s {
+    return [s stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 }
-
-- (void)editRelayHost:(id)sender {
-    (void)sender;
-    NSString *v = [self promptValue:@"Relay host — an IP or domain you control (your always-on box):"
-                            default:[RemoteAccess shared].relayHost];
-    if (v) { [[RemoteAccess shared] setRelayHost:v]; [self rebuildMenu]; }
-}
-- (void)editRelayUser:(id)sender {
-    (void)sender;
-    NSString *v = [self promptValue:@"Relay SSH user (the forwarding-only account, e.g. tunnel):"
-                            default:[RemoteAccess shared].relayUser];
-    if (v) { [[RemoteAccess shared] setRelayUser:v]; [self rebuildMenu]; }
-}
-- (void)editRelayPort:(id)sender {
-    (void)sender;
-    NSString *v = [self promptValue:@"Relay SSH port (usually 22):"
-                            default:[RemoteAccess shared].relayPort];
-    if (v) { [[RemoteAccess shared] setRelayPort:v]; [self rebuildMenu]; }
-}
+- (void)relayHostFieldChanged:(NSTextField *)f { [[RemoteAccess shared] setRelayHost:[self trimmed:f.stringValue]]; }
+- (void)relayUserFieldChanged:(NSTextField *)f { [[RemoteAccess shared] setRelayUser:[self trimmed:f.stringValue]]; }
+- (void)relayPortFieldChanged:(NSTextField *)f { [[RemoteAccess shared] setRelayPort:[self trimmed:f.stringValue]]; }
 
 - (void)toggleRemoteAccess:(id)sender {
     (void)sender;

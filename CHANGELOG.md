@@ -2,6 +2,11 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.2.2] — 2026-06-16
+
+### Fixed
+- **Brightness boost above 100% works again.** A prior "no-washout" change clamped the EDR overlay to the display's live headroom, which silently turned the boost into a no-op on panels that report no grantable headroom (e.g. the built-in MacBook Air display). The overlay now presents the full requested boost again — genuinely brightening the screen — while still auto-suspending during Mission Control. On XDR/HDR panels it rides real headroom with detail intact; on standard panels it lifts overall luminance (with some highlight washout toward the top of the slider).
+
 ## [2.2.1] — 2026-06-16
 
 ### Changed
@@ -42,6 +47,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ### Added
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
+[2.2.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.2.2
 [2.2.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.2.1
 [2.2.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.2.0
 [2.1.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.1.0

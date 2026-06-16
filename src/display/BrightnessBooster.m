@@ -5,8 +5,6 @@
 
 static NSScreen *screenForDisplay(CGDirectDisplayID did);
 
-static const float kHeadroomProbeStep = 0.1f;
-
 static BOOL fullScreenSystemOverlayActive(CGDirectDisplayID displayID) {
     CFArrayRef list = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly,
                                                  kCGNullWindowID);
@@ -59,7 +57,12 @@ static BOOL fullScreenSystemOverlayActive(CGDirectDisplayID displayID) {
         NSScreen *s = screenForDisplay(self.displayID);
         float headroom = s ? (float)s.maximumExtendedDynamicRangeColorComponentValue : 1.0f;
         if (headroom > self.observedPeak) self.observedPeak = headroom;
-        float eff = MIN(self.boost, headroom + kHeadroomProbeStep);
+        // Present the full requested boost (do NOT clamp to the live headroom). On an
+        // XDR panel the granted headroom carries it with detail intact; on a standard
+        // panel the excess clips to white, which still brightens the image — the effect
+        // users actually want from a boost. Clamping to live headroom made it a no-op on
+        // panels (like the built-in MacBook Air) that never grant headroom.
+        float eff = self.boost;
         if (eff < 1.0f) eff = 1.0f;
         self.presented = eff;
 
@@ -142,6 +145,11 @@ static NSString *const kHeadroomKey = @"DDBoostHeadroom";
     if (active && active.observedPeak > 1.05f) return active.observedPeak;
     NSNumber *learned = self.learnedHeadroom[@(displayID)];
     if (learned && learned.floatValue > 1.05f) return learned.floatValue;
+    // Allow boosting up to the panel's potential EDR ceiling. On an XDR/HDR panel this
+    // is real headroom (highlights brighten with detail intact). On a standard panel
+    // (e.g. MacBook Air) the system grants no live headroom, so values above 1.0 clip
+    // toward white in the multiply overlay — which still raises overall luminance (the
+    // visible brightening), at the cost of highlight contrast as the slider is pushed.
     NSScreen *s = screenForDisplay(displayID);
     float p = s ? (float)s.maximumPotentialExtendedDynamicRangeColorComponentValue : 1.0f;
     return p > 1.0f ? p : 1.0f;

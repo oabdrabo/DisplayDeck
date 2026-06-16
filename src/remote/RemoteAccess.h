@@ -1,0 +1,34 @@
+#import <Foundation/Foundation.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+// Inline remote access — no Tailscale/Headscale, nothing to install. DisplayDeck
+// holds a reverse SSH tunnel (macOS's built-in /usr/bin/ssh) to a relay host you
+// control (e.g. your kk0s box), forwarding this Mac's SSH (22) and Screen Sharing
+// (5900) to loopback ports on the relay. Reach the Mac from anywhere by hopping
+// through the relay (ProxyJump). The tunnel auto-reconnects.
+@interface RemoteAccess : NSObject
+
++ (instancetype)shared;
+
+@property (nonatomic, readonly, getter=isEnabled) BOOL enabled;   // user wants it on (persisted)
+@property (nonatomic, readonly, getter=isConnected) BOOL connected; // tunnel process currently up
+
+// Turn on: generate the key if needed, enable Remote Login + Screen Sharing
+// (one admin prompt), and start the auto-reconnecting tunnel.
+- (void)enable;
+- (void)disable;
+
+- (nullable NSString *)publicKey;        // the key to authorize on the relay
+- (int)sshPort;                          // relay loopback port → this Mac's 22
+- (int)vncPort;                          // relay loopback port → this Mac's 5900
+- (NSString *)relayHost;
+- (NSString *)relayUser;
+- (NSString *)connectCommand;            // copy-paste command to reach this Mac
+
+// Restore on launch if previously enabled.
+- (void)restoreIfEnabled;
+
+@end
+
+NS_ASSUME_NONNULL_END

@@ -6,7 +6,7 @@ CC         = clang
 CFLAGS     = -fobjc-arc -Wall -Wextra -O2 -fstack-protector-strong \
              -mmacosx-version-min=14.0 -MMD -MP
 INCLUDES   = -Isrc/app -Isrc/common -Isrc/display -Isrc/power \
-             -Isrc/transparency -Isrc/window
+             -Isrc/transparency -Isrc/window -Isrc/remote
 FRAMEWORKS = -framework Cocoa -framework CoreGraphics -framework IOKit \
              -framework ServiceManagement -framework UserNotifications \
              -framework CoreDisplay -framework Metal -framework QuartzCore \
@@ -19,7 +19,8 @@ SOURCES    = src/main.m \
              src/display/ColorTemperature.m \
              src/power/Caffeine.m \
              src/transparency/WindowTransparency.m \
-             src/window/WindowPiP.m src/window/WindowManager.m
+             src/window/WindowPiP.m src/window/WindowManager.m \
+             src/remote/RemoteAccess.m
 OBJECTS    = $(SOURCES:.m=.o)
 DEPS       = $(SOURCES:.m=.d)
 EXECUTABLE = $(APP_NAME)

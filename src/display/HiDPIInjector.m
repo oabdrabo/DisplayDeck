@@ -6,9 +6,16 @@
 #include <arpa/inet.h>
 #include <math.h>
 
-static const double kInjectorFullPanelScales[] = { 0.625, 0.75, 0.875, 1.0, 1.125, 1.25, 1.5 };
+static const double kInjectorFullPanelScales[] =
+    { 0.5, 0.625, 0.75, 0.875, 1.0, 1.125, 1.25, 1.5, 1.75, 2.0 };
 static const size_t kInjectorFullPanelScaleCount =
     sizeof(kInjectorFullPanelScales) / sizeof(*kInjectorFullPanelScales);
+// HiDPI renders at 2x the logical size — gate by an absolute rendered-framebuffer
+// ceiling rather than a flat panel-relative cap (small/2K panels get more options;
+// big panels stay protected from huge, GPU-heavy buffers).
+static const size_t kInjectorMaxFramebufferW = 7680;
+static const size_t kInjectorMaxFramebufferH = 4320;
+static const size_t kInjectorMinLogicalW     = 800;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -47,6 +54,8 @@ static NSData *entry8(NSUInteger logicalW, NSUInteger logicalH) {
         size_t lw = (size_t)round(panel.width  * kInjectorFullPanelScales[i] / 2.0) * 2;
         size_t lh = (size_t)round(panel.height * kInjectorFullPanelScales[i] / 2.0) * 2;
         if (lw == 0 || lh == 0) continue;
+        if (lw < kInjectorMinLogicalW) continue;
+        if (lw * 2 > kInjectorMaxFramebufferW || lh * 2 > kInjectorMaxFramebufferH) continue;
         NSString *key = [NSString stringWithFormat:@"%zu_%zu", lw, lh];
         if ([seen containsObject:key]) continue;
         [seen addObject:key];

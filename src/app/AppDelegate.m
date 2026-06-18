@@ -769,6 +769,9 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
         [menu addItem:[self actionItem:@"Stop Forced HiDPI"
                                 action:@selector(stopForcedHiDPI:) displayID:display.displayID
                                 symbol:@"arrow.uturn.backward"]];
+        // Brightness & Warmth still drive the physical panel while it's mirrored —
+        // keep them; only the resolution/disable items stay hidden during a force.
+        [self addBrightnessWarmthToMenu:menu display:display];
         return;
     }
     if (!display.isActive) {
@@ -785,39 +788,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
         return;
     }
 
-    if ([[Brightness shared] supportsBrightness:display.displayID]) {
-        int b = [[Brightness shared] brightnessPercentForDisplay:display.displayID];
-        if (b < 0) b = 100;
-        float boost = [[BrightnessBooster shared] boostForDisplay:display.displayID];
-        int shown = boost > 1.0f ? (int)lroundf(boost * 100.0f) : b;
-        int maxPct = (int)lroundf([[BrightnessBooster shared]
-                                   maxBoostForDisplay:display.displayID] * 100.0f);
-        if (maxPct < 100) maxPct = 100;
-        if (shown > maxPct) shown = maxPct;
-        NSButton *autoToggle = nil;
-        if ([[Brightness shared] supportsAutoBrightness:display.displayID]) {
-            autoToggle = [self rowToggleWithSymbol:@"a.circle" onSymbol:@"a.circle.fill"
-                state:[[Brightness shared] autoBrightnessEnabled:display.displayID]
-                  tag:(NSInteger)display.displayID
-               action:@selector(toggleAutoBrightness:) tooltip:@"Auto-brightness"];
-        }
-        [menu addItem:[self sliderRowWithLabel:@"Brightness" icon:ddSymbol(@"sun.max")
-                                       percent:shown minPct:10
-                                        maxPct:maxPct continuous:YES tag:display.displayID
-                                        action:@selector(brightnessSliderChanged:)
-                                     accessories:(autoToggle ? @[autoToggle] : @[])]];
-    }
-    int warmth = (int)lroundf([[ColorTemperature shared]
-                               warmthForDisplay:display.displayID] * 100.0f);
-    NSButton *autoWarm = [self rowToggleWithSymbol:@"moon" onSymbol:@"moon.fill"
-        state:[ColorTemperature shared].autoEnabled
-          tag:(NSInteger)display.displayID
-       action:@selector(toggleAutoWarmth:) tooltip:@"Auto-warm at night"];
-    [menu addItem:[self sliderRowWithLabel:@"Warmth" icon:ddSymbol(@"thermometer.sun")
-                                   percent:warmth minPct:0
-                                    maxPct:100 continuous:YES tag:display.displayID
-                                    action:@selector(warmthSliderChanged:)
-                                 accessories:@[autoWarm]]];
+    [self addBrightnessWarmthToMenu:menu display:display];
     {
         NSArray<DDDisplayMode *> *modes =
             [self curatedModes:[self.displayManager modesForDisplay:display.displayID]
@@ -853,6 +824,42 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [menu addItem:[self actionItem:@"Disable"
                             action:@selector(disableDisplay:) displayID:display.displayID
                             symbol:@"power"]];
+}
+
+- (void)addBrightnessWarmthToMenu:(NSMenu *)menu display:(DDDisplayInfo *)display {
+    if ([[Brightness shared] supportsBrightness:display.displayID]) {
+        int b = [[Brightness shared] brightnessPercentForDisplay:display.displayID];
+        if (b < 0) b = 100;
+        float boost = [[BrightnessBooster shared] boostForDisplay:display.displayID];
+        int shown = boost > 1.0f ? (int)lroundf(boost * 100.0f) : b;
+        int maxPct = (int)lroundf([[BrightnessBooster shared]
+                                   maxBoostForDisplay:display.displayID] * 100.0f);
+        if (maxPct < 100) maxPct = 100;
+        if (shown > maxPct) shown = maxPct;
+        NSButton *autoToggle = nil;
+        if ([[Brightness shared] supportsAutoBrightness:display.displayID]) {
+            autoToggle = [self rowToggleWithSymbol:@"a.circle" onSymbol:@"a.circle.fill"
+                state:[[Brightness shared] autoBrightnessEnabled:display.displayID]
+                  tag:(NSInteger)display.displayID
+               action:@selector(toggleAutoBrightness:) tooltip:@"Auto-brightness"];
+        }
+        [menu addItem:[self sliderRowWithLabel:@"Brightness" icon:ddSymbol(@"sun.max")
+                                       percent:shown minPct:10
+                                        maxPct:maxPct continuous:YES tag:display.displayID
+                                        action:@selector(brightnessSliderChanged:)
+                                     accessories:(autoToggle ? @[autoToggle] : @[])]];
+    }
+    int warmth = (int)lroundf([[ColorTemperature shared]
+                               warmthForDisplay:display.displayID] * 100.0f);
+    NSButton *autoWarm = [self rowToggleWithSymbol:@"moon" onSymbol:@"moon.fill"
+        state:[ColorTemperature shared].autoEnabled
+          tag:(NSInteger)display.displayID
+       action:@selector(toggleAutoWarmth:) tooltip:@"Auto-warm at night"];
+    [menu addItem:[self sliderRowWithLabel:@"Warmth" icon:ddSymbol(@"thermometer.sun")
+                                   percent:warmth minPct:0
+                                    maxPct:100 continuous:YES tag:display.displayID
+                                    action:@selector(warmthSliderChanged:)
+                                 accessories:@[autoWarm]]];
 }
 
 - (NSMenu *)buildForceHiDPISubmenuForDisplay:(CGDirectDisplayID)displayID
@@ -1191,6 +1198,28 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     login.state = (SMAppService.mainAppService.status == SMAppServiceStatusEnabled)
         ? NSControlStateValueOn : NSControlStateValueOff;
     [menu addItem:login];
+
+    [menu addItem:[NSMenuItem sectionHeaderWithTitle:@"Help & support"]];
+    [menu addItem:[self linkItem:@"Support DisplayDeck…" symbol:@"heart"
+        url:@"https://donate.stripe.com/3cI6oI7Gh1PG0eV8MJ5kk00"]];
+    [menu addItem:[self linkItem:@"Report a Bug…" symbol:@"ladybug"
+        url:@"https://github.com/oabdrabo/DisplayDeck/issues/new?labels=bug&title=Bug%3A+"]];
+    [menu addItem:[self linkItem:@"Request a Feature…" symbol:@"lightbulb"
+        url:@"https://github.com/oabdrabo/DisplayDeck/issues/new?labels=enhancement&title=Feature%3A+"]];
+}
+
+- (NSMenuItem *)linkItem:(NSString *)title symbol:(NSString *)symbol url:(NSString *)url {
+    NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title
+        action:@selector(openLink:) keyEquivalent:@""];
+    item.target = self;
+    item.image = ddSymbol(symbol);
+    item.representedObject = url;
+    return item;
+}
+
+- (void)openLink:(NSMenuItem *)sender {
+    NSString *url = sender.representedObject;
+    if (url) [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:url]];
 }
 
 - (NSMenuItem *)checkItemWithTitle:(NSString *)title key:(NSString *)key {

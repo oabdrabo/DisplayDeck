@@ -1102,6 +1102,12 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
 
     [self clearForceState];
 
+    // Destroy the virtual display — not just unmirror it. Leaving it alive parks a
+    // full-size (2× backing, e.g. 6400×4000) phantom screen in the arrangement,
+    // which chokes the WindowServer and can strand the cursor off-screen. The next
+    // force recreates it via ensureSharedVirtualDisplay…
+    [self destroySharedVirtualDisplay];
+
     NSLog(@"DisplayDeck: Stopped forced HiDPI for display 0x%X", displayID);
     return ok;
 }
@@ -1123,12 +1129,29 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
         [self clearForceState];
     }
 
-    if (self.sharedVirtualDisplay) {
-        SLVirtualDisplay *vd = self.sharedVirtualDisplay;
-        self.sharedVirtualDisplay = nil;
-        [vd destroy];
-        NSLog(@"DisplayDeck: Released shared virtual display.");
-    }
+    [self destroySharedVirtualDisplay];
+}
+
+// Tear down the shared virtual display and drop our reference. Setting the ivar to
+// nil first means a termination callback (handleSharedVirtualDisplayTerminated)
+// sees no display and no-ops, so we never double-free.
+- (void)destroySharedVirtualDisplay {
+    if (!self.sharedVirtualDisplay) return;
+    SLVirtualDisplay *vd = self.sharedVirtualDisplay;
+    self.sharedVirtualDisplay = nil;
+    [vd destroy];
+
+    // -destroy only *marks* the virtual display for teardown: the WindowServer
+    // doesn't drop it from the online display list until the next reconfiguration
+    // transaction. Run an empty begin/complete cycle to flush the removal now —
+    // otherwise the orphaned 2×-backing screen lingers (choking the WindowServer
+    // and stranding the cursor) until the process exits.
+    [self performDisplayConfig:^CGError(CGDisplayConfigRef config) {
+        (void)config;
+        return kCGErrorSuccess;
+    } error:NULL];
+
+    NSLog(@"DisplayDeck: Released shared virtual display.");
 }
 
 - (void)realignForcedDisplay {
@@ -1214,6 +1237,7 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
     } error:NULL];
 
     [self clearForceState];
+    [self destroySharedVirtualDisplay];   // don't leave the orphan VD behind on disconnect
 }
 
 - (void)startMonitoringWithChangeHandler:(DisplayChangeBlock)handler {

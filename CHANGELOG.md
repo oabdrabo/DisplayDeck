@@ -2,6 +2,12 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.6.1] — 2026-06-18
+
+### Fixed
+- **Warmth now sticks across display changes.** macOS wipes the gamma table on resolution/HiDPI changes and sleep-wake, which silently dropped warmth until the night schedule next moved — the "sometimes warm, sometimes not". DisplayDeck now re-applies warmth right after a display reconfiguration and re-asserts it every minute, so it stays put.
+- **Auto-night no longer cancels your manual warmth during the day.** Turning on the moon (auto) used to set the screen neutral until evening; now auto only ever *adds* night warmth on top of whatever you've set, so your manual warmth always holds. (The moon lights only the **auto-night schedule** — your warmth can be on from the slider with the moon off.)
+
 ## [2.6.0] — 2026-06-18
 
 ### Added
@@ -150,6 +156,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ### Added
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
+[2.6.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.6.1
 [2.6.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.6.0
 [2.5.3]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.5.3
 [2.5.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.5.2

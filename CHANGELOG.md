@@ -2,6 +2,14 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.6.0] — 2026-06-18
+
+### Added
+- **Help & support in Settings** — quick links to **support the app**, **report a bug**, and **request a feature** (opens a pre-labeled GitHub issue).
+
+### Fixed
+- **Brightness and Warmth no longer disappear when a display's HiDPI is forced.** Forcing a resolution collapsed that display's section to just "Stop Forced HiDPI" — the brightness and warmth sliders were dropped, even though both still drive the real panel while it's mirrored. They're back. (Resolution, Force HiDPI, Crisp HiDPI and Disable stay hidden during a force on purpose — changing the physical mode would fight the active mirror, so stop the force first.)
+
 ## [2.5.3] — 2026-06-18
 
 ### Changed
@@ -142,6 +150,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ### Added
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
+[2.6.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.6.0
 [2.5.3]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.5.3
 [2.5.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.5.2
 [2.5.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.5.1

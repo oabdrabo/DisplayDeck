@@ -2,6 +2,11 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.5.1] — 2026-06-18
+
+### Changed
+- **Remote Access now lists this Mac too**, marked **(this Mac)** with its live ● online / ○ offline status, so the device list is a complete view of every Mac on the relay — not just the others. (Shown for status; there's nothing to connect to on yourself, so it has no actions.)
+
 ## [2.5.0] — 2026-06-18
 
 ### Added
@@ -127,6 +132,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ### Added
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
+[2.5.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.5.1
 [2.5.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.5.0
 [2.4.4]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.4.4
 [2.4.3]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.4.3

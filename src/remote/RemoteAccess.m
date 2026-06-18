@@ -239,11 +239,12 @@ static NSString *ddFriendlyTunnelError(NSString *raw) {
             NSArray<NSString *> *f = [line componentsSeparatedByString:@"\t"];
             if (f.count < 3) continue;
             int ssh = f[1].intValue, vnc = f[2].intValue;
-            if (ssh <= 0 || ssh == selfSsh) continue;   // skip ourselves
+            if (ssh <= 0) continue;
             BOOL online = (f.count >= 4 && f[3].intValue != 0);   // 4th field = live flag
             [found addObject:@{ @"name": f[0].length ? f[0] : @"Mac",
                                 @"user": NSUserName(),
-                                @"ssh": @(ssh), @"vnc": @(vnc), @"online": @(online) }];
+                                @"ssh": @(ssh), @"vnc": @(vnc), @"online": @(online),
+                                @"self": @(ssh == selfSsh) }];   // include this Mac, flagged
         }
         if ([found isEqualToArray:(self.cachedPeers ?: @[])]) return;   // no change → no rebuild
         self.cachedPeers = found;

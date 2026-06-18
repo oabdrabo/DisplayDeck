@@ -577,11 +577,15 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [m addItem:[NSMenuItem sectionHeaderWithTitle:@"Connect to a Mac"]];
     NSArray<NSDictionary *> *peers = ra.peers;
     if (peers.count == 0) {
-        [self addLabelToMenu:m title:@"No other Macs found"];
+        [self addLabelToMenu:m title:@"No Macs found"];
     }
     for (NSDictionary *peer in peers) {
-        [self addLabelToMenu:m title:[NSString stringWithFormat:@"%@ %@",
-            [peer[@"online"] boolValue] ? @"●" : @"○", peer[@"name"]]];
+        BOOL isSelf = [peer[@"self"] boolValue];
+        NSString *dot = [peer[@"online"] boolValue] ? @"●" : @"○";
+        NSString *name = isSelf ? [NSString stringWithFormat:@"%@ (this Mac)", peer[@"name"]]
+                                : peer[@"name"];
+        [self addLabelToMenu:m title:[NSString stringWithFormat:@"%@ %@", dot, name]];
+        if (isSelf) continue;   // it's you — shown for status, nothing to connect to
         NSMenuItem *ss = [[NSMenuItem alloc] initWithTitle:@"Screen Share"
             action:@selector(connectScreenShare:) keyEquivalent:@""];
         ss.target = self; ss.image = ddSymbol(@"display"); ss.representedObject = peer;

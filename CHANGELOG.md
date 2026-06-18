@@ -2,6 +2,11 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.6.2] — 2026-06-18
+
+### Fixed
+- **The Warmth slider is live across its whole range again.** The 2.6.1 auto-night change clamped warmth to a floor when auto was on, so dragging the lower part of the slider did nothing at night. Auto-night now treats the slider as the night **peak** and scales it by the schedule, so the slider always changes the warmth; with auto off it stays a direct, constant warmth.
+
 ## [2.6.1] — 2026-06-18
 
 ### Fixed
@@ -156,6 +161,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ### Added
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
+[2.6.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.6.2
 [2.6.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.6.1
 [2.6.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.6.0
 [2.5.3]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.5.3

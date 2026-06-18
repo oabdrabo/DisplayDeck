@@ -5,7 +5,7 @@ static NSString *const kWarmthKey = @"DDWarmth";
 static NSString *const kAutoKey   = @"DDWarmthAuto";
 static const double kNeutralKelvin = 6500.0;
 static const double kWarmestKelvin = 3400.0;
-static const float  kNightPeak = 0.6f;   // night warmth auto adds when you've set none
+static const float  kNightDefault = 0.6f;   // night peak when auto is on and you've set none
 enum { kRampSize = 256 };
 
 // Night intensity 0 (neutral/day) … 1 (full warm). Time-based (no location):
@@ -115,13 +115,14 @@ static void temperatureGains(double kelvin, double *r, double *g, double *b) {
     CGSetDisplayTransferByTable(displayID, kRampSize, r, g, b);
 }
 
-// What should actually be on screen now: your manual setting, and — when auto is on —
-// at least the night schedule on top of it. Auto only ever *adds* warmth, never removes
-// what you set, so turning it on during the day can't wipe your warmth.
+// What should be on screen now. Auto OFF → exactly the slider (constant, fully live).
+// Auto ON → the slider is the *night peak*, scaled by the schedule (full at night, fading
+// to neutral by day) — so the slider always changes the result, no dead zone.
 - (float)effectiveWarmthForDisplay:(CGDirectDisplayID)displayID {
-    float manual = self.warmths[@(displayID)] ? self.warmths[@(displayID)].floatValue : 0.0f;
-    if (!self.autoEnabled) return manual;
-    return fmaxf(manual, kNightPeak * nightRamp());
+    float slider = self.warmths[@(displayID)] ? self.warmths[@(displayID)].floatValue : 0.0f;
+    if (!self.autoEnabled) return slider;
+    float peak = slider > 0.001f ? slider : kNightDefault;   // set nothing → sensible default
+    return peak * nightRamp();
 }
 
 // Slider value = your manual setting (auto's night warmth rides on top, shown by the moon).

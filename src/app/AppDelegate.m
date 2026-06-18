@@ -554,16 +554,16 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
         : @"";
     [m addItem:[self relayFieldRow:endpoint placeholder:@"tunnel@host:22"
                             action:@selector(relayEndpointFieldChanged:)]];
-    NSString *state;
-    if (!ra.isConfigured)    state = @"⚠ Set the relay above";
-    else if (!ra.isEnabled)  state = @"○ Off";
-    else if (ra.isConnected) state = @"● Connected";
-    else                     state = ra.lastError ? [@"⚠ " stringByAppendingString:ra.lastError]
-                                                   : @"○ Connecting…";
-    [self addLabelToMenu:m title:state];
+    NSString *stateText, *stateIcon;
+    if (!ra.isConfigured)    { stateText = @"Set the relay above"; stateIcon = @"exclamationmark.triangle"; }
+    else if (!ra.isEnabled)  { stateText = @"Off";                 stateIcon = @"circle"; }
+    else if (ra.isConnected) { stateText = @"Connected";           stateIcon = @"circle.fill"; }
+    else if (ra.lastError)   { stateText = ra.lastError;           stateIcon = @"exclamationmark.triangle"; }
+    else                     { stateText = @"Connecting…";         stateIcon = @"circle.dotted"; }
+    [self addInfoRow:m title:stateText image:ddSymbol(stateIcon)];
     if (ra.isConfigured) {
-        [self addLabelToMenu:m title:
-            [NSString stringWithFormat:@"This Mac · ssh %d · vnc %d", ra.sshPort, ra.vncPort]];
+        [self addInfoRow:m title:[NSString stringWithFormat:@"This Mac · ssh %d · vnc %d", ra.sshPort, ra.vncPort]
+                   image:ddSymbol(@"desktopcomputer")];
     }
     NSMenuItem *key = [[NSMenuItem alloc] initWithTitle:@"Copy this Mac's relay key"
         action:@selector(copyRemoteAuthLine:) keyEquivalent:@""];
@@ -577,14 +577,15 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [m addItem:[NSMenuItem sectionHeaderWithTitle:@"Connect to a Mac"]];
     NSArray<NSDictionary *> *peers = ra.peers;
     if (peers.count == 0) {
-        [self addLabelToMenu:m title:@"No Macs found"];
+        [self addInfoRow:m title:@"No Macs found" image:ddSymbol(@"magnifyingglass")];
     }
     for (NSDictionary *peer in peers) {
         BOOL isSelf = [peer[@"self"] boolValue];
-        NSString *dot = [peer[@"online"] boolValue] ? @"●" : @"○";
         NSString *name = isSelf ? [NSString stringWithFormat:@"%@ (this Mac)", peer[@"name"]]
                                 : peer[@"name"];
-        [self addLabelToMenu:m title:[NSString stringWithFormat:@"%@ %@", dot, name]];
+        // filled dot = online, hollow = offline (reads even when dimmed, no color needed)
+        [self addInfoRow:m title:name
+                   image:ddSymbol([peer[@"online"] boolValue] ? @"circle.fill" : @"circle")];
         if (isSelf) continue;   // it's you — shown for status, nothing to connect to
         NSMenuItem *ss = [[NSMenuItem alloc] initWithTitle:@"Screen Share"
             action:@selector(connectScreenShare:) keyEquivalent:@""];
@@ -1304,10 +1305,15 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 }
 
 - (void)addLabelToMenu:(NSMenu *)menu title:(NSString *)title {
-    NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title
-                                                 action:nil
-                                          keyEquivalent:@""];
+    [self addInfoRow:menu title:title image:nil];
+}
+
+// A disabled (non-clickable) info row with an optional icon — giving it an icon
+// fills the image gutter so the text doesn't read as indented next to icon'd rows.
+- (void)addInfoRow:(NSMenu *)menu title:(NSString *)title image:(NSImage *)image {
+    NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title action:nil keyEquivalent:@""];
     item.enabled = NO;
+    item.image = image;
     [menu addItem:item];
 }
 

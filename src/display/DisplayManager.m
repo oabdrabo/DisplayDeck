@@ -16,7 +16,7 @@ static const NSTimeInterval kDDVirtualOnlineTimeout = 15.0;
 
 static const double kDDAspectTolerance = 0.005;
 
-static const double kDDHiDPIScales[] = {0.5, 0.625, 0.75, 0.875, 1.0, 1.125, 1.25, 1.5, 1.75, 2.0};
+static const double kDDHiDPIScales[] = {0.5, 0.625, 0.75, 0.875, 1.0, 1.125, 1.25, 1.3125, 1.35, 1.5, 1.75, 2.0};
 static const size_t kDDHiDPIScaleCount = sizeof(kDDHiDPIScales) / sizeof(*kDDHiDPIScales);
 // A forced-HiDPI mode renders at 2x the logical ("looks-like") size, so cap the
 // rendered framebuffer absolutely rather than by a flat panel-relative scale:
@@ -208,8 +208,8 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
         uint64_t budget = dev ? dev.recommendedMaxWorkingSetSize : 0;   // unified-memory budget
         const uint64_t GB = 1024ULL * 1024 * 1024;
         if      (budget >= 16 * GB) cap = CGSizeMake(10240, 5760);  // Max/Ultra-class
-        else if (budget >=  8 * GB) cap = CGSizeMake(7680, 4320);   // Pro / 16GB+
-        else if (budget >=  4 * GB) cap = CGSizeMake(6400, 3600);   // base M, 8GB
+        else if (budget >=  8 * GB) cap = CGSizeMake(7680, 4800);   // Pro / 16GB+ — allows 3840×2400 looks-like
+        else if (budget >=  4 * GB) cap = CGSizeMake(6400, 4000);   // base M, 8GB — allows 3200×2000
         else                        cap = CGSizeMake(5120, 2880);   // conservative fallback
     });
     return cap;

@@ -158,15 +158,23 @@
   @media(max-width:860px){.feats{grid-template-columns:1fr 1fr}}
   @media(max-width:560px){.feats{grid-template-columns:1fr}}
 
-  /* ---- gallery ---- */
-  .gallery{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
-  .gallery figure{background:var(--panel);border:1px solid var(--line);border-radius:13px;
-    padding:14px 14px 0;overflow:hidden;display:flex;flex-direction:column}
-  .gallery img{border-radius:8px 8px 0 0;width:100%;height:300px;object-fit:cover;object-position:top}
-  .gallery figcaption{font-family:var(--mono);font-size:11.5px;color:var(--faint);
-    padding:13px 2px 15px;letter-spacing:.03em}
-  @media(max-width:860px){.gallery{grid-template-columns:1fr 1fr}}
-  @media(max-width:480px){.gallery{grid-template-columns:1fr}}
+  /* ---- showcase: each capability shown beside the screenshot that proves it ---- */
+  .showcase{display:flex;flex-direction:column;gap:72px}
+  .show-row{display:flex;gap:56px;align-items:center}
+  .show-row:nth-child(even){flex-direction:row-reverse}
+  .show-row > div{flex:1;min-width:0}
+  .show-shot{display:flex;justify-content:center}
+  .show-shot img{width:100%;height:auto;border-radius:14px;border:1px solid var(--line);
+    background:var(--panel);box-shadow:0 30px 70px -34px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.02)}
+  .show-text .tag{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--cool);
+    display:block;margin-bottom:14px}
+  .show-row:nth-child(even) .show-text .tag{color:var(--warm)}
+  .show-text h3{font-family:var(--display);font-weight:700;letter-spacing:-.015em;line-height:1.08;
+    font-size:clamp(24px,3vw,33px);margin-bottom:14px}
+  .show-text p{color:var(--muted);font-size:16.5px;line-height:1.6;max-width:34em}
+  @media(max-width:760px){
+    .show-row,.show-row:nth-child(even){flex-direction:column;gap:24px}
+    .show-text p{max-width:none}}
 
   /* ---- spec / how it works ---- */
   .spec{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--panel)}
@@ -299,21 +307,47 @@
   </div>
 </section>
 
-<!-- screenshots -->
+<!-- showcase: real captures, each next to the capability it demonstrates -->
 <section id="screens" style="padding-top:0">
   <div class="wrap">
     <div class="head reveal">
-      <div class="kicker">A look inside</div>
-      <h2>Native, dense, no clutter.</h2>
-      <p>Real captures — the menu lives where every other menu-bar app does, and the submenus stay out of your way until you need them.</p>
+      <div class="kicker">A closer look</div>
+      <h2>Every control, shown where you use it.</h2>
+      <p>Real captures from the menu bar — each one is the actual control, not a mockup.</p>
     </div>
-    <div class="gallery reveal">
-      <figure><img src="assets/screenshots/remote.png" alt="Remote Access submenu — relay field, status, and discovered Macs" /><figcaption>remote access · relay &amp; peers</figcaption></figure>
-      <figure><img src="assets/screenshots/windowsnap.png" alt="Window snap menu with layout glyphs" /><figcaption>window snapping · layout glyphs</figcaption></figure>
-      <figure><img src="assets/screenshots/keepawake.png" alt="Keep-awake duration submenu" /><figcaption>keep-awake durations</figcaption></figure>
-      <figure><img src="assets/screenshots/resolution.png" alt="Curated resolution picker" /><figcaption>resolution picker · ★ native</figcaption></figure>
-      <figure><img src="assets/screenshots/forcehidpi.png" alt="Force HiDPI sizes submenu" /><figcaption>force HiDPI · more space</figcaption></figure>
-      <figure><img src="assets/screenshots/settings.png" alt="Settings submenu" /><figcaption>grouped settings</figcaption></figure>
+    <div class="showcase">
+      <div class="show-row reveal">
+        <div class="show-shot"><img src="assets/screenshots/windowsnap.png" alt="Window snap submenu with a layout glyph and ⌃⌥ shortcut beside every tiling option" /></div>
+        <div class="show-text">
+          <span class="tag">TILING</span>
+          <h3>Snap windows where you mean to</h3>
+          <p>Halves, quarters, thirds, maximize or center — by dragging to a screen edge, a global ⌃⌥ shortcut, or the menu. Every option shows a little screen glyph so you pick the right one at a glance.</p>
+        </div>
+      </div>
+      <div class="show-row reveal">
+        <div class="show-shot"><img src="assets/screenshots/remote.png" alt="Remote Access submenu — relay field, connection status, this Mac's ports, and discovered Macs with live status" /></div>
+        <div class="show-text">
+          <span class="tag">REMOTE</span>
+          <h3>Your Macs, reachable from anywhere</h3>
+          <p>One reverse-SSH tunnel through a relay you control — Screen Share, SSH, or transfer files to any of your Macs, each shown with live online status. Nothing to install, no third-party service. It even tells you why if a connection can't be made.</p>
+        </div>
+      </div>
+      <div class="show-row reveal">
+        <div class="show-shot"><img src="assets/screenshots/resolution.png" alt="Curated resolution picker with looks-like sizes, HiDPI/Standard type, refresh rate, and a star marking the panel-native mode" /></div>
+        <div class="show-text">
+          <span class="tag">SCALING</span>
+          <h3>Resolutions macOS won't show you</h3>
+          <p>A curated picker — ★ marks the panel-native, crispest mode — plus Force HiDPI's scaled "More Space" tiers. The retina sizes your display can actually do, that the system settings leave out.</p>
+        </div>
+      </div>
+      <div class="show-row reveal">
+        <div class="show-shot"><img src="assets/screenshots/keepawake.png" alt="Keep Awake submenu with a toggle and timed durations from 15 minutes to 5 hours" /></div>
+        <div class="show-text">
+          <span class="tag">POWER</span>
+          <h3>Stay awake, on your schedule</h3>
+          <p>Keep the Mac and its display from sleeping — on indefinitely, or for anywhere from 15 minutes to 5 hours. Or just left-click the mug to flip it on and off.</p>
+        </div>
+      </div>
     </div>
   </div>
 </section>

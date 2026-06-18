@@ -200,6 +200,9 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     (void)notification;
     [[ColorTemperature shared] restoreAll];
     [[WindowPiP shared] restoreAll];
+    if ([[WindowTransparency shared] backendAvailable])
+        [[WindowTransparency shared] resetAllWindows:NULL];   // don't leave windows transparent
+    [[RemoteAccess shared] shutdown];                         // don't orphan the ssh tunnel
     [self.displayManager cleanUpAllVirtualDisplays];
     [self.displayManager stopMonitoring];
 }
@@ -1197,16 +1200,10 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
 }
 
 - (void)applyFontSmoothing:(NSInteger)level {
-    CFStringRef key = CFSTR("AppleFontSmoothing");
-    if (level < 0) {
-        CFPreferencesSetValue(key, NULL, kCFPreferencesAnyApplication,
-                              kCFPreferencesCurrentUser, kCFPreferencesCurrentHost);
-    } else {
-        CFNumberRef num = CFNumberCreate(NULL, kCFNumberNSIntegerType, &level);
-        CFPreferencesSetValue(key, num, kCFPreferencesAnyApplication,
-                              kCFPreferencesCurrentUser, kCFPreferencesCurrentHost);
-        CFRelease(num);
-    }
+    CFNumberRef num = CFNumberCreate(NULL, kCFNumberNSIntegerType, &level);
+    CFPreferencesSetValue(CFSTR("AppleFontSmoothing"), num, kCFPreferencesAnyApplication,
+                          kCFPreferencesCurrentUser, kCFPreferencesCurrentHost);
+    CFRelease(num);
     CFPreferencesSynchronize(kCFPreferencesAnyApplication,
                              kCFPreferencesCurrentUser, kCFPreferencesCurrentHost);
 }

@@ -25,7 +25,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSString *)relayHost;
 - (NSString *)relayUser;
 - (NSString *)relayPort;
-- (NSString *)connectCommand;            // copy-paste command to reach this Mac
 - (NSString *)authorizeLine;             // forwarding-only authorized_keys line for the relay
 - (BOOL)isConfigured;                    // a relay host is set
 
@@ -47,6 +46,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 // Restore on launch if previously enabled.
 - (void)restoreIfEnabled;
+
+// Tear down the tunnel + any forwards on app quit, without changing the persisted
+// enabled flag — otherwise the ssh children are orphaned and keep holding the relay
+// ports, so the next launch can't rebind them.
+- (void)shutdown;
 
 @end
 

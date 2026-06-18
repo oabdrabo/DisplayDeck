@@ -2,6 +2,11 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.5.2] — 2026-06-18
+
+### Changed
+- **Remote Access menu rows line up consistently now.** The status, "This Mac", and per-Mac rows were plain text with an empty icon gutter, so they read as oddly indented next to the rows that had icons. Every row now carries an icon — a status dot, a desktop glyph for this Mac, and a **filled circle (online) / hollow circle (offline)** per Mac — so it reads as one uniform list instead of mixed indentation.
+
 ## [2.5.1] — 2026-06-18
 
 ### Changed
@@ -132,6 +137,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ### Added
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
+[2.5.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.5.2
 [2.5.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.5.1
 [2.5.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.5.0
 [2.4.4]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.4.4

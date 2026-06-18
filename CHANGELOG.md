@@ -2,6 +2,11 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.7.0] — 2026-06-18
+
+### Changed
+- **Force HiDPI offers higher "looks like" resolutions.** It previously stopped at **3200×2000**; on 8 GB+ GPUs it now goes up to **3840×2400**, with **3360×2100** and **3456×2160** added in between. Force HiDPI renders to a virtual display at **2× the chosen size**, and the per-GPU framebuffer ceiling that gates this was conservative — a 3840×2400 target is a ~150 MB buffer, far under budget — so the ceiling was raised and finer scale steps added. (The window server redraws everything at that 2× size each frame, so the largest options ask more of the GPU.)
+
 ## [2.6.2] — 2026-06-18
 
 ### Fixed
@@ -161,6 +166,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ### Added
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
+[2.7.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.7.0
 [2.6.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.6.2
 [2.6.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.6.1
 [2.6.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.6.0

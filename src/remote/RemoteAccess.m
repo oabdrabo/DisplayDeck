@@ -87,11 +87,6 @@ static NSString *const kDefaultRelayPort = @"22";
     return [s stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 }
 
-- (NSString *)connectCommand {
-    return [NSString stringWithFormat:@"ssh -J %@@%@ %@@localhost -p %d",
-            self.relayUser, self.relayHost, NSUserName(), self.sshPort];
-}
-
 - (NSString *)authorizeLine {
     // Two lines for the relay's authorized_keys:
     //  1) the forwarding key — reverse tunnel locked to this Mac's ports
@@ -289,6 +284,16 @@ static NSString *const kDefaultRelayPort = @"22";
 
 - (void)restoreIfEnabled {
     if (self.isEnabled) [self enable];
+}
+
+- (void)shutdown {
+    NSTask *t = self.task;
+    self.task = nil;
+    @try { if (t.isRunning) [t terminate]; } @catch (__unused NSException *e) {}
+    for (NSTask *f in self.forwards.allValues) {
+        @try { if (f.isRunning) [f terminate]; } @catch (__unused NSException *e) {}
+    }
+    [self.forwards removeAllObjects];
 }
 
 // Enable Remote Login + Screen Sharing once (single admin prompt). Best-effort:

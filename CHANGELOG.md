@@ -2,6 +2,15 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.4.4] — 2026-06-18
+
+### Fixed
+- **Quitting now tears down Remote Access cleanly.** The reverse-SSH tunnel (and any Screen-Sharing forwards) were left running orphaned after the app quit, holding the relay's ports — so the next launch couldn't rebind them and the tunnel was stuck reconnecting. They're now stopped on quit, while the on/off setting is preserved so it still auto-restores next launch.
+- **Quitting now restores windows you'd made transparent**, matching the documented behaviour. Previously they stayed transparent (the Dock-side overlay outlives the app) until the affected apps were relaunched.
+
+### Changed
+- Internal cleanup: removed dead code (an unused connect-command builder and a redundant font-smoothing branch). No behaviour change.
+
 ## [2.4.3] — 2026-06-18
 
 ### Changed
@@ -110,6 +119,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ### Added
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
+[2.4.4]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.4.4
 [2.4.3]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.4.3
 [2.4.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.4.2
 [2.4.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.4.1

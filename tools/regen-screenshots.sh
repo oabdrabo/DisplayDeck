@@ -26,7 +26,7 @@ relaunch
 echo "cropping Brightness/Warmth + Transparency sections from the menu…"
 # coordinates are for the standard menu layout (502px-wide capture); tweak if your menu differs
 "$TMP/ddcrop" "$TMP/menu.png" 0 64  502 150 "$TMP/brightness-warmth.png"
-"$TMP/ddcrop" "$TMP/menu.png" 0 570 502 420 "$TMP/transparency.png"
+"$TMP/ddcrop" "$TMP/menu.png" 0 566 508 320 "$TMP/transparency.png"
 
 echo "capturing Remote Access with the relay IP masked…"
 REAL=$(defaults read "$DD" RemoteRelayHost 2>/dev/null || echo "")

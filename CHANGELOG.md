@@ -2,6 +2,11 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.4.1] — 2026-06-18
+
+### Fixed
+- **Stopping Force HiDPI no longer leaves a phantom display that can freeze the pointer.** Turning off a forced HiDPI resolution un-mirrored your panel but left the backing **virtual display** (a 2×-resolution framebuffer, e.g. 6400×4000) alive and parked in the display arrangement. That orphaned screen kept loading the WindowServer and could strand the mouse/trackpad off-screen — recoverable only by quitting the app. Stop now **destroys** the virtual display and flushes the removal with a display-reconfiguration pass (the same teardown the disconnect path uses), so the arrangement returns to just your real screen(s). Verified with an integration test across repeated force/stop cycles.
+
 ## [2.4.0] — 2026-06-16
 
 ### Added
@@ -95,6 +100,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ### Added
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
+[2.4.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.4.1
 [2.4.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.4.0
 [2.3.5]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.5
 [2.3.4]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.4

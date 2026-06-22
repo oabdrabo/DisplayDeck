@@ -731,7 +731,7 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
     }
     if (self.forcedPhysical != kCGNullDirectDisplay) {
         deliver(NO, DDError(DDErrorDomain, DDErrorAlreadyForced,
-            @"Another display is already forced. Stop it first — this version "
+            @"Another display is already forced. Stop it first - this version "
             @"supports one forced display at a time (one CGVirtualDisplay per "
             @"process is an OS-level limit)."));
         return;
@@ -844,7 +844,7 @@ static NSString *const kDisabledDisplaysKey = @"DDDisabledDisplays";
             } error:NULL];
         }
         deliver(NO, DDError(DDErrorDomain, DDErrorVirtualApplyFailed,
-            @"Could not pin the virtual display to the requested logical size — "
+            @"Could not pin the virtual display to the requested logical size - "
             @"pointer coordinates would misalign. Force aborted."));
         return;
     }

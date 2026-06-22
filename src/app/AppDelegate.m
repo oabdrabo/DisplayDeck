@@ -255,7 +255,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     self.statusItem = [[NSStatusBar systemStatusBar]
                        statusItemWithLength:NSVariableStatusItemLength];
     self.statusItem.button.toolTip =
-        @"DisplayDeck — click to keep awake, right-click for the menu";
+        @"DisplayDeck - click to keep awake, right-click for the menu";
 
     self.mainMenu = [[NSMenu alloc] init];
     self.mainMenu.autoenablesItems = NO;
@@ -1309,7 +1309,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [submenu addItem:[NSMenuItem separatorItem]];
 
     for (DDDisplayMode *mode in modes) {
-        NSString *rate = ddRateString(mode.refreshRate, @"—");
+        NSString *rate = ddRateString(mode.refreshRate, @"-");
         if (mode.isDefaultForDisplay) rate = [rate stringByAppendingString:@"  ★"];
         NSString *type = mode.isHiDPI ? @"HiDPI" : @"Standard";
         NSString *logical = ddLogicalString(mode.logicalWidth, mode.logicalHeight);

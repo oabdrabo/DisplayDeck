@@ -299,7 +299,7 @@ static NSString *ddFriendlyTunnelError(NSString *raw) {
 - (void)enable {
     [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kEnabledKey];
     if (![self ensureKey]) {
-        NSLog(@"DisplayDeck: remote access — key generation failed");
+        NSLog(@"DisplayDeck: remote access - key generation failed");
         return;
     }
     [self enableServicesIfNeeded];
@@ -348,7 +348,7 @@ static NSString *ddFriendlyTunnelError(NSString *raw) {
         if (!err) {
             [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kServicesKey];
         } else {
-            NSLog(@"DisplayDeck: remote access — could not enable services: %@", err);
+            NSLog(@"DisplayDeck: remote access - could not enable services: %@", err);
         }
     });
 }
@@ -413,7 +413,7 @@ static NSString *ddFriendlyTunnelError(NSString *raw) {
             }
         });
     } @catch (__unused NSException *e) {
-        NSLog(@"DisplayDeck: remote access — failed to launch ssh");
+        NSLog(@"DisplayDeck: remote access - failed to launch ssh");
     }
 }
 

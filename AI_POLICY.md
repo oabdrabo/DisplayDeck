@@ -1,12 +1,12 @@
 # AI Contribution Policy
 
-This project is built and maintained by humans. AI tools are welcome as assistants, but anything you submit must clear the same bar as any other contribution — and a few extra rules exist because low-effort, machine-generated submissions create a real review burden.
+This project is built and maintained by humans. AI tools are welcome as assistants, but anything you submit must clear the same bar as any other contribution - and a few extra rules exist because low-effort, machine-generated submissions create a real review burden.
 
-This is about protecting a limited resource — maintainer attention — not opposition to AI.
+This is about protecting a limited resource - maintainer attention - not opposition to AI.
 
 ## 1. Disclose AI use
 
-If you used AI in any form — generating code, refactoring, writing the PR description, etc. — say so. State **which model/tool** you used and **how much** of the work was AI-assisted.
+If you used AI in any form - generating code, refactoring, writing the PR description, etc. - say so. State **which model/tool** you used and **how much** of the work was AI-assisted.
 
 ## 2. Understand your own code
 
@@ -26,8 +26,8 @@ One pull request = one concern (a single bug or a single feature). Don't bundle 
 
 ## 6. Solve a real need
 
-A valid PR addresses **a bug you actually hit or a feature you genuinely need** — not AI-initiated "improvements" from scanning the codebase for things to change. The one exception is a legitimate **security** finding that otherwise follows these rules.
+A valid PR addresses **a bug you actually hit or a feature you genuinely need** - not AI-initiated "improvements" from scanning the codebase for things to change. The one exception is a legitimate **security** finding that otherwise follows these rules.
 
 ---
 
-Thanks for respecting these — they keep the project healthy and maintainable for everyone.
+Thanks for respecting these - they keep the project healthy and maintainable for everyone.

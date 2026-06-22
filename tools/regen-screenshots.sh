@@ -37,4 +37,4 @@ for d in assets/screenshots docs/assets/screenshots; do
   cp "$TMP"/{menu,forcehidpi,windowsnap,arrange,keepawake,resolution,settings,remote,brightness-warmth,transparency}.png "$d/"
 done
 rm -rf "$TMP"
-echo "done — review with: git diff --stat assets docs/assets"
+echo "done - review with: git diff --stat assets docs/assets"

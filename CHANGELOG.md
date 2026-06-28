@@ -2,6 +2,11 @@
 
 All notable changes to DisplayDeck are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [2.8.2] - 2026-06-28
+
+### Added
+- **One-click recovery for a disabled built-in.** Re-enabling the built-in after it was turned off with an external connected is impossible through macOS's display APIs - only restarting the login session brings it back. (Confirmed by exhaustive testing: every CoreGraphics/SkyLight re-enable path returns `kCGErrorIllegalArgument` for the built-in, even forcing a re-detect or supplying a full mode+origin, while external displays re-enable normally - the built-in is evicted from the window server's configurable set on disable.) The "couldn't re-enable" dialog now offers a **Log Out…** button that restarts the session for you, instead of only telling you to do it by hand.
+
 ## [2.8.1] - 2026-06-20
 
 ### Fixed

@@ -13,6 +13,22 @@
 #import <ServiceManagement/ServiceManagement.h>
 #import <UserNotifications/UserNotifications.h>
 #import <objc/runtime.h>
+#import <Carbon/Carbon.h>
+
+static void DDRequestLogout(void) {
+    const char *bundleID = "com.apple.loginwindow";
+    AEAddressDesc target = { typeNull, NULL };
+    if (AECreateDesc(typeApplicationBundleID, bundleID, strlen(bundleID), &target) != noErr) return;
+    AppleEvent event = { typeNull, NULL };
+    AppleEvent reply = { typeNull, NULL };
+    if (AECreateAppleEvent(kCoreEventClass, kAEReallyLogOut, &target,
+                           kAutoGenerateReturnID, kAnyTransactionID, &event) == noErr) {
+        AESendMessage(&event, &reply, kAENoReply, kAEDefaultTimeout);
+        AEDisposeDesc(&event);
+        AEDisposeDesc(&reply);
+    }
+    AEDisposeDesc(&target);
+}
 
 static NSString * const kAutoManage        = @"AutoManageBuiltIn";
 static NSString * const kShowNotifications = @"ShowNotifications";
@@ -1423,10 +1439,13 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
         [NSApp activate];
         NSAlert *alert = [[NSAlert alloc] init];
         alert.messageText = [NSString stringWithFormat:@"Couldn’t re-enable “%@”", name];
-        alert.informativeText = @"macOS won’t re-enable a display that was turned off while another display is connected. Log out and back in (Apple menu → Log Out) to restore it.";
+        alert.informativeText = @"macOS can only re-enable a display that was turned off while another display is connected by restarting your login session. Click “Log Out…” to do that now and restore it. You’ll be prompted to save any open work first.";
         alert.alertStyle = NSAlertStyleWarning;
-        [alert addButtonWithTitle:@"OK"];
-        [alert runModal];
+        [alert addButtonWithTitle:@"Log Out…"];
+        [alert addButtonWithTitle:@"Cancel"];
+        if ([alert runModal] == NSAlertFirstButtonReturn) {
+            DDRequestLogout();
+        }
     }
 }
 

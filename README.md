@@ -188,4 +188,4 @@ DisplayDeck is free, open-source, and has no tracking or ads. If it's useful to 
 
 ## License
 
-[MIT](LICENSE) © 2026 Omar Abdrabo
+[MIT](LICENSE) © 2026 PYXIS3

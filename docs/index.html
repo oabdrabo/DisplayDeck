@@ -231,7 +231,6 @@
 </head>
 <body>
 
-<!-- faux macOS menu bar -->
 <div class="menubar">
   <span class="glyph" aria-hidden="true"></span>
   <nav>
@@ -247,7 +246,6 @@
   </span>
 </div>
 
-<!-- hero -->
 <header class="hero">
   <div class="wrap hero-grid">
     <div class="reveal in">
@@ -284,7 +282,6 @@
 
 <hr class="thread" />
 
-<!-- features -->
 <section id="features">
   <div class="wrap">
     <div class="head reveal">
@@ -307,7 +304,6 @@
   </div>
 </section>
 
-<!-- showcase: real captures, each next to the capability it demonstrates -->
 <section id="screens" style="padding-top:0">
   <div class="wrap">
     <div class="head reveal">
@@ -378,7 +374,6 @@
 
 <hr class="thread" />
 
-<!-- how it works -->
 <section id="how">
   <div class="wrap">
     <div class="head reveal">
@@ -402,7 +397,6 @@
 
 <hr class="thread" />
 
-<!-- install -->
 <section id="install">
   <div class="wrap">
     <div class="head reveal">
@@ -436,7 +430,6 @@
   </div>
 </section>
 
-<!-- footer -->
 <footer>
   <div class="wrap foot">
     <span class="brand"><img src="assets/icon.png" alt="" />DisplayDeck</span>
@@ -463,7 +456,7 @@
   const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
   document.querySelectorAll('.reveal:not(.in)').forEach(el=>io.observe(el));
 </script>
-<!-- click any command / code block to copy it -->
+
 <script>
 (function () {
   function clean(t) {
@@ -510,9 +503,7 @@
   });
 })();
 </script>
-<!-- shortlink analytics - only active when served via the displaydeck.pyxis3.ai
-     reverse proxy; stays silent on raw github.io. Host-based attribution
-     (proxy links never carry an sl_cid). -->
+
 <script>
 (function () {
   var H = location.hostname;

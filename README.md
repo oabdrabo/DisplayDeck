@@ -50,7 +50,7 @@ The menu-bar mug - an empty cup when idle, filled while keeping your Mac awake (
 
 <p align="center"><img src="assets/screenshots/menubar.png" width="300" alt="Menu-bar mug icon - empty when idle, filled when keeping awake" /></p>
 
-The menu - a **Keep Awake** row with an inline toggle, per-display **Brightness** (with the inline **Ⓐ** auto-brightness toggle) and **Warmth** sliders (with the **** auto-night toggle), a **Window** snapping section, a **Remote Access** row, and per-app **Transparency** rows with frosted-glass, keep-on-top, and picture-in-picture toggles:
+The menu - a **Keep Awake** row with an inline toggle, per-display **Brightness** (with the inline **Ⓐ** auto-brightness toggle) and **Warmth** sliders (with the auto-night toggle), a **Window** snapping section, a **Remote Access** row, and per-app **Transparency** rows with frosted-glass, keep-on-top, and picture-in-picture toggles:
 
 <p align="center"><img src="assets/screenshots/menu.png" width="300" alt="Main menu" /></p>
 

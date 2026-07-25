@@ -509,7 +509,7 @@
   var H = location.hostname;
   if (!/\.pyxis3\.ai$/.test(H)) return;
   var q = new URLSearchParams(location.search);
-  var cid = q.get('sl_cid') || '';
+  var cid = q.get('cid') || '';
   var utm = new URLSearchParams();
   q.forEach(function (v, k) { if (/^utm_/.test(k)) utm.set(k, v); });
   var J = function (b) { return new Blob([JSON.stringify(b)], { type: 'application/json' }); };

@@ -596,7 +596,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     else                     { stateText = @"Connecting…";         stateIcon = @"circle.dotted"; }
     [self addInfoRow:m title:stateText image:ddSymbol(stateIcon)];
     if (ra.isConfigured) {
-        [self addInfoRow:m title:[NSString stringWithFormat:@"This Mac · ssh %d · vnc %d", ra.sshPort, ra.vncPort]
+        [self addInfoRow:m title:[NSString stringWithFormat:@"This Mac, ssh %d, vnc %d", ra.sshPort, ra.vncPort]
                    image:ddSymbol(@"desktopcomputer")];
     }
     NSMenuItem *key = [[NSMenuItem alloc] initWithTitle:@"Copy this Mac's relay key"
@@ -803,7 +803,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
             NSMutableString *line = [NSMutableString stringWithString:
                 ddLogicalString(display.logicalWidth, display.logicalHeight)];
             if (display.isHiDPI) [line appendString:@"  HiDPI"];
-            if (display.refreshRate > 0) [line appendFormat:@" · %.0fHz", display.refreshRate];
+            if (display.refreshRate > 0) [line appendFormat:@" %.0fHz", display.refreshRate];
             [self addInfoRow:menu title:line image:ddSymbol(@"display")];
         }
         [menu addItem:[self actionItem:@"Enable"
@@ -1407,7 +1407,7 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     BOOL strandRisk = CGDisplayIsBuiltin(did) && [self.displayManager hasExternalDisplay];
     if (strandRisk || [self pref:kConfirmDisable]) {
         NSString *info = strandRisk
-            ? @"While an external display is connected, macOS can only re-enable the built-in after you log out and back in — there is no in-app way to undo it."
+            ? @"While an external display is connected, macOS can only re-enable the built-in after you log out and back in - there is no in-app way to undo it."
             : @"You can re-enable it from this menu.";
         if (![self confirmDestructive:[NSString stringWithFormat:@"Disable “%@”?", name]
                                  info:info

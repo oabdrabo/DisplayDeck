@@ -5,18 +5,18 @@
   <img src="assets/banner-dark.png" alt="DisplayDeck - total control of your Mac's displays and windows" width="880" />
 </picture>
 
-Disable & enable screens · Force HiDPI · brightness with EDR boost · color warmth (with auto-night) · window tiling/snapping · transparency, blur, keep-on-top & picture-in-picture · keep-awake · remote access.
+Disable & enable screens, Force HiDPI, brightness with EDR boost, color warmth (with auto-night), window tiling/snapping, transparency, blur, keep-on-top & picture-in-picture, keep-awake, remote access.
 
 [![Release](https://img.shields.io/badge/release-v2.8.2-2ea44f?style=flat-square)](https://github.com/oabdrabo/DisplayDeck/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-3da639?style=flat-square)](LICENSE)
-[![Platform](https://img.shields.io/badge/macOS-14%2B-000?style=flat-square&logo=apple&logoColor=white)](#-requirements)
-[![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-555?style=flat-square)](#-requirements)
-[![Objective-C](https://img.shields.io/badge/Objective--C-438eff?style=flat-square)](#-how-it-works)
+[![Platform](https://img.shields.io/badge/macOS-14%2B-000?style=flat-square&logo=apple&logoColor=white)](#requirements)
+[![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-555?style=flat-square)](#requirements)
+[![Objective-C](https://img.shields.io/badge/Objective--C-438eff?style=flat-square)](#how-it-works)
 [![Website](https://img.shields.io/badge/displaydeck.pyxis3.ai-635bff?style=flat-square&logo=githubpages&logoColor=white)](https://displaydeck.pyxis3.ai/?utm_source=github&utm_medium=readme&utm_campaign=displaydeck)
 
 <sub>
 
-[**Features**](#-features) · [**Screenshots**](#-screenshots) · [**Install**](#-install) · [**Requirements**](#-requirements) · [**How it works**](#-how-it-works) · [**FAQ**](#-faq) · [**Support**](#-support--sponsors) · [**License**](#-license)
+[**Features**](#features) | [**Screenshots**](#screenshots) | [**Install**](#install) | [**Requirements**](#requirements) | [**How it works**](#how-it-works) | [**FAQ**](#faq) | [**Support**](#support--sponsors) | [**License**](#license)
 
 </sub>
 
@@ -61,7 +61,7 @@ The menu - a **Keep Awake** row with an inline toggle, per-display **Brightness*
   <img src="assets/screenshots/transparency.png" width="330" alt="Per-app transparency, keep-on-top, and picture-in-picture controls" />
 </p>
 
-**Remote access** - set the relay inline as a single `user@host:port`, copy this Mac's relay key, keep the Mac awake while on, and Screen Share / SSH / transfer files to your auto-discovered Macs (● live · ○ offline), all from the menu. If a connection fails it tells you why (here the placeholder `relay.example.com` doesn't resolve):
+**Remote access** - set the relay inline as a single `user@host:port`, copy this Mac's relay key, keep the Mac awake while on, and Screen Share / SSH / transfer files to your auto-discovered Macs (● live, ○ offline), all from the menu. If a connection fails it tells you why (here the placeholder `relay.example.com` doesn't resolve):
 
 <p align="center"><img src="assets/screenshots/remote.png" width="500" alt="Remote Access submenu - relay field, status, and discovered Macs" /></p>
 

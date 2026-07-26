@@ -99,7 +99,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ## [2.4.2] - 2026-06-18
 
 ### Changed
-- **Text smoothing is now a slider, not four spelled-out buttons.** It's a single discrete control - the same icon + slider + value layout as the Brightness and Warmth rows - that snaps **Off · Light · Medium · Strong** with the level name as its live label. Takes far less width and reads as one interactive control. It also **always shows your current level**: previously, when the system key was unset (the default state) nothing was highlighted, so you couldn't tell where you were; it now reflects the macOS default (Medium). Strong is the real ceiling - macOS's `AppleFontSmoothing` tops out at that level.
+- **Text smoothing is now a slider, not four spelled-out buttons.** It's a single discrete control - the same icon + slider + value layout as the Brightness and Warmth rows - that snaps **Off, Light, Medium, Strong** with the level name as its live label. Takes far less width and reads as one interactive control. It also **always shows your current level**: previously, when the system key was unset (the default state) nothing was highlighted, so you couldn't tell where you were; it now reflects the macOS default (Medium). Strong is the real ceiling - macOS's `AppleFontSmoothing` tops out at that level.
 
 ## [2.4.1] - 2026-06-18
 
@@ -162,7 +162,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 ## [2.2.1] - 2026-06-16
 
 ### Changed
-- **Text smoothing** is now an inline segmented control (Off · Light · Medium · Strong) in the main menu, instead of a submenu - one click, with the active level always visible.
+- **Text smoothing** is now an inline segmented control (Off, Light, Medium, Strong) in the main menu, instead of a submenu - one click, with the active level always visible.
 
 ## [2.2.0] - 2026-06-16
 

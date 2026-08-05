@@ -1,539 +1,1227 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="color-scheme" content="dark" />
-<meta name="theme-color" content="#13151a" />
-<title>DisplayDeck - total control of your Mac's displays</title>
-<meta name="description" content="A tiny macOS menu-bar app: disable screens, force HiDPI, boost brightness past 100%, warm the colors, snap and tile windows, make any window transparent or float, and keep your Mac awake. Free & open source, Apple Silicon." />
-<link rel="canonical" href="https://displaydeck.pyxis3.ai/" />
-<meta property="og:type" content="website" />
-<meta property="og:site_name" content="DisplayDeck" />
-<meta property="og:url" content="https://displaydeck.pyxis3.ai/" />
-<meta property="og:title" content="DisplayDeck - total control of your Mac's displays" />
-<meta property="og:description" content="Total control of your Mac's displays - from one coffee mug in your menu bar." />
-<meta property="og:image" content="https://oabdrabo.github.io/DisplayDeck/assets/icon.png" />
-<meta property="og:image:alt" content="DisplayDeck app icon - a coffee mug in the menu bar" />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="DisplayDeck - total control of your Mac's displays" />
-<meta name="twitter:description" content="Disable screens, force HiDPI, boost brightness past 100%, warm colors, snap windows, transparency, keep-awake. Free & open source, Apple Silicon." />
-<meta name="twitter:image" content="https://oabdrabo.github.io/DisplayDeck/assets/icon.png" />
-<link rel="icon" type="image/png" href="assets/icon.png" />
-<link rel="apple-touch-icon" href="assets/icon.png" />
-<link rel="manifest" href="site.webmanifest" />
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "DisplayDeck",
-  "operatingSystem": "macOS 14+",
-  "applicationCategory": "UtilitiesApplication",
-  "processorRequirements": "Apple Silicon",
-  "url": "https://displaydeck.pyxis3.ai/",
-  "downloadUrl": "https://github.com/oabdrabo/DisplayDeck/releases/latest",
-  "softwareVersion": "2.8.2",
-  "license": "https://opensource.org/licenses/MIT",
-  "author": { "@type": "Organization", "name": "PYXIS3" },
-  "description": "A tiny macOS menu-bar app: disable screens, force HiDPI, boost brightness past 100%, warm the colors (auto at night), snap and tile windows, make any window transparent or float, reach your Mac from anywhere, and keep it awake.",
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-}
-</script>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-<style>
-  :root{
-    --ink:#13151a; --panel:#1a1d24; --panel2:#20242d; --line:#2b303b;
-    --text:#eceef2; --muted:#888f9e; --faint:#5b6270;
-    --warm:#f0a24a; --cool:#56c4e6;
-    --warm-soft:rgba(240,162,74,.14); --cool-soft:rgba(86,196,230,.14);
-    --display:"Bricolage Grotesque",system-ui,sans-serif;
-    --body:"Inter",system-ui,sans-serif;
-    --mono:"JetBrains Mono",ui-monospace,monospace;
-    --maxw:1120px;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html{scroll-behavior:smooth;overflow-x:hidden}
-  body{
-    background:var(--ink);color:var(--text);font-family:var(--body);
-    line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;
-  }
-  a{color:inherit;text-decoration:none}
-  img{max-width:100%;display:block}
-  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#13151a" />
+    <title>DisplayDeck - total control of your Mac's displays</title>
+    <meta
+      name="description"
+      content="A tiny macOS menu-bar app: disable screens, force HiDPI, boost brightness past 100%, warm the colors, snap and tile windows, make any window transparent or float, and keep your Mac awake. Free & open source, Apple Silicon."
+    />
+    <link rel="canonical" href="https://displaydeck.pyxis3.ai/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="DisplayDeck" />
+    <meta property="og:url" content="https://displaydeck.pyxis3.ai/" />
+    <meta property="og:title" content="DisplayDeck - total control of your Mac's displays" />
+    <meta property="og:description" content="Total control of your Mac's displays - from one coffee mug in your menu bar." />
+    <meta property="og:image" content="https://oabdrabo.github.io/DisplayDeck/assets/icon.png" />
+    <meta property="og:image:alt" content="DisplayDeck app icon - a coffee mug in the menu bar" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="DisplayDeck - total control of your Mac's displays" />
+    <meta name="twitter:description" content="Disable screens, force HiDPI, boost brightness past 100%, warm colors, snap windows, transparency, keep-awake. Free & open source, Apple Silicon." />
+    <meta name="twitter:image" content="https://oabdrabo.github.io/DisplayDeck/assets/icon.png" />
+    <link rel="icon" type="image/png" href="assets/icon.png" />
+    <link rel="apple-touch-icon" href="assets/icon.png" />
+    <link rel="manifest" href="site.webmanifest" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "DisplayDeck",
+        "operatingSystem": "macOS 14+",
+        "applicationCategory": "UtilitiesApplication",
+        "processorRequirements": "Apple Silicon",
+        "url": "https://displaydeck.pyxis3.ai/",
+        "downloadUrl": "https://github.com/oabdrabo/DisplayDeck/releases/latest",
+        "softwareVersion": "2.8.2",
+        "license": "https://opensource.org/licenses/MIT",
+        "author": { "@type": "Organization", "name": "PYXIS3" },
+        "description": "A tiny macOS menu-bar app: disable screens, force HiDPI, boost brightness past 100%, warm the colors (auto at night), snap and tile windows, make any window transparent or float, reach your Mac from anywhere, and keep it awake.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #13151a;
+        --panel: #1a1d24;
+        --panel2: #20242d;
+        --line: #2b303b;
+        --text: #eceef2;
+        --muted: #888f9e;
+        --faint: #5b6270;
+        --warm: #f0a24a;
+        --cool: #56c4e6;
+        --warm-soft: rgba(240, 162, 74, 0.14);
+        --cool-soft: rgba(86, 196, 230, 0.14);
+        --display: "Bricolage Grotesque", system-ui, sans-serif;
+        --body: "Inter", system-ui, sans-serif;
+        --mono: "JetBrains Mono", ui-monospace, monospace;
+        --maxw: 1120px;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+        overflow-x: hidden;
+      }
+      body {
+        background: var(--ink);
+        color: var(--text);
+        font-family: var(--body);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      img {
+        max-width: 100%;
+        display: block;
+      }
+      .wrap {
+        max-width: var(--maxw);
+        margin: 0 auto;
+        padding: 0 24px;
+      }
 
-  /* warmth thread - the signature: a color-temperature slider as a divider */
-  .thread{height:2px;border:0;width:100%;
-    background:linear-gradient(90deg,#f0a24a,#f6c06b,#ece7df 48%,#9fd9ee,#56c4e6);
-    opacity:.5;}
+      /* warmth thread - the signature: a color-temperature slider as a divider */
+      .thread {
+        height: 2px;
+        border: 0;
+        width: 100%;
+        background: linear-gradient(90deg, #f0a24a, #f6c06b, #ece7df 48%, #9fd9ee, #56c4e6);
+        opacity: 0.5;
+      }
 
-  /* ---- faux macOS menu bar ---- */
-  .menubar{position:sticky;top:0;z-index:50;
-    display:flex;align-items:center;gap:22px;
-    height:38px;padding:0 18px;
-    background:rgba(19,21,26,.72);backdrop-filter:blur(18px) saturate(140%);
-    border-bottom:1px solid var(--line);font-size:13px;}
-  .menubar .glyph{width:15px;height:15px;border-radius:4px;
-    background:conic-gradient(from 210deg,var(--warm),var(--cool));}
-  .menubar nav{display:flex;gap:20px;font-family:var(--mono);font-size:12.5px;color:var(--muted)}
-  .menubar nav a:hover{color:var(--text)}
-  .menubar .spacer{flex:1}
-  .menubar .status{display:flex;align-items:center;gap:14px;
-    font-family:var(--mono);font-size:12px;color:var(--faint)}
-  .menubar .mug{display:flex;align-items:center;gap:7px;color:var(--warm)}
-  .menubar .mug img{width:16px;height:16px;filter:drop-shadow(0 0 6px var(--warm-soft))}
-  @media(max-width:680px){.menubar nav{display:none}}
+      /* ---- faux macOS menu bar ---- */
+      .menubar {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        height: 38px;
+        padding: 0 18px;
+        background: rgba(19, 21, 26, 0.72);
+        backdrop-filter: blur(18px) saturate(140%);
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+      }
+      .menubar .glyph {
+        width: 15px;
+        height: 15px;
+        border-radius: 4px;
+        background: conic-gradient(from 210deg, var(--warm), var(--cool));
+      }
+      .menubar nav {
+        display: flex;
+        gap: 20px;
+        font-family: var(--mono);
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      .menubar nav a:hover {
+        color: var(--text);
+      }
+      .menubar .spacer {
+        flex: 1;
+      }
+      .menubar .status {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--faint);
+      }
+      .menubar .mug {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--warm);
+      }
+      .menubar .mug img {
+        width: 16px;
+        height: 16px;
+        filter: drop-shadow(0 0 6px var(--warm-soft));
+      }
+      @media (max-width: 680px) {
+        .menubar nav {
+          display: none;
+        }
+      }
 
-  /* ---- hero ---- */
-  .hero{position:relative;padding:96px 0 64px}
-  .hero::before{content:"";position:absolute;inset:-20% -10% auto -10%;height:520px;z-index:-1;
-    background:radial-gradient(60% 80% at 22% 30%,var(--warm-soft),transparent 70%),
-               radial-gradient(55% 80% at 85% 18%,var(--cool-soft),transparent 70%);
-    filter:blur(8px);}
-  .hero-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:48px;align-items:center}
-  .eyebrow{font-family:var(--mono);font-size:12.5px;letter-spacing:.12em;
-    text-transform:uppercase;color:var(--cool);margin-bottom:22px;
-    display:inline-flex;gap:10px;align-items:center}
-  .eyebrow::before{content:"";width:26px;height:1px;background:var(--cool);opacity:.7}
-  h1{font-family:var(--display);font-weight:800;line-height:1.02;letter-spacing:-.02em;
-    font-size:clamp(40px,6.4vw,72px);}
-  h1 .warm{color:var(--warm)}
-  .lede{color:var(--muted);font-size:clamp(16px,1.7vw,19px);margin:24px 0 32px;max-width:30em}
-  .cta{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
-  .brew{display:flex;align-items:center;gap:0;border:1px solid var(--line);
-    border-radius:11px;background:var(--panel);overflow:hidden;font-family:var(--mono);font-size:13.5px}
-  .brew{max-width:100%}
-  .brew code{padding:13px 16px;color:var(--text);white-space:nowrap;min-width:0;overflow-x:auto}
-  .brew code .sigil{color:var(--cool)}
-  .brew button{flex:0 0 auto;border:0;border-left:1px solid var(--line);background:var(--panel2);
-    color:var(--muted);padding:13px 16px;cursor:pointer;font-family:var(--mono);font-size:12px;
-    letter-spacing:.04em;transition:color .15s,background .15s}
-  .brew button:hover{color:var(--text);background:#262b35}
-  .brew button.copied{color:var(--warm)}
-  .btn{display:inline-flex;align-items:center;gap:9px;border-radius:11px;padding:13px 20px;
-    font-weight:600;font-size:14.5px;border:1px solid var(--line);background:transparent;
-    transition:border-color .15s,transform .15s}
-  .btn:hover{border-color:var(--cool);transform:translateY(-1px)}
-  .btn svg{width:17px;height:17px}
-  .btn.download{background:var(--warm);border-color:var(--warm);color:#1a1205;font-weight:700}
-  .btn.download:hover{border-color:var(--warm);box-shadow:0 12px 30px -12px var(--warm)}
-  .meta{margin-top:26px;font-family:var(--mono);font-size:12px;color:var(--faint);
-    display:flex;gap:18px;flex-wrap:wrap}
-  .meta b{color:var(--muted);font-weight:500}
+      /* ---- hero ---- */
+      .hero {
+        position: relative;
+        padding: 96px 0 64px;
+      }
+      .hero::before {
+        content: "";
+        position: absolute;
+        inset: -20% -10% auto -10%;
+        height: 520px;
+        z-index: -1;
+        background: radial-gradient(60% 80% at 22% 30%, var(--warm-soft), transparent 70%), radial-gradient(55% 80% at 85% 18%, var(--cool-soft), transparent 70%);
+        filter: blur(8px);
+      }
+      .hero-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+        gap: 48px;
+        align-items: center;
+      }
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--cool);
+        margin-bottom: 22px;
+        display: inline-flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .eyebrow::before {
+        content: "";
+        width: 26px;
+        height: 1px;
+        background: var(--cool);
+        opacity: 0.7;
+      }
+      h1 {
+        font-family: var(--display);
+        font-weight: 800;
+        line-height: 1.02;
+        letter-spacing: -0.02em;
+        font-size: clamp(40px, 6.4vw, 72px);
+      }
+      h1 .warm {
+        color: var(--warm);
+      }
+      .lede {
+        color: var(--muted);
+        font-size: clamp(16px, 1.7vw, 19px);
+        margin: 24px 0 32px;
+        max-width: 30em;
+      }
+      .cta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        align-items: center;
+      }
+      .brew {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: var(--panel);
+        overflow: hidden;
+        font-family: var(--mono);
+        font-size: 13.5px;
+      }
+      .brew {
+        max-width: 100%;
+      }
+      .brew code {
+        padding: 13px 16px;
+        color: var(--text);
+        white-space: nowrap;
+        min-width: 0;
+        overflow-x: auto;
+      }
+      .brew code .sigil {
+        color: var(--cool);
+      }
+      .brew button {
+        flex: 0 0 auto;
+        border: 0;
+        border-left: 1px solid var(--line);
+        background: var(--panel2);
+        color: var(--muted);
+        padding: 13px 16px;
+        cursor: pointer;
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        transition:
+          color 0.15s,
+          background 0.15s;
+      }
+      .brew button:hover {
+        color: var(--text);
+        background: #262b35;
+      }
+      .brew button.copied {
+        color: var(--warm);
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        border-radius: 11px;
+        padding: 13px 20px;
+        font-weight: 600;
+        font-size: 14.5px;
+        border: 1px solid var(--line);
+        background: transparent;
+        transition:
+          border-color 0.15s,
+          transform 0.15s;
+      }
+      .btn:hover {
+        border-color: var(--cool);
+        transform: translateY(-1px);
+      }
+      .btn svg {
+        width: 17px;
+        height: 17px;
+      }
+      .btn.download {
+        background: var(--warm);
+        border-color: var(--warm);
+        color: #1a1205;
+        font-weight: 700;
+      }
+      .btn.download:hover {
+        border-color: var(--warm);
+        box-shadow: 0 12px 30px -12px var(--warm);
+      }
+      .meta {
+        margin-top: 26px;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--faint);
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+      }
+      .meta b {
+        color: var(--muted);
+        font-weight: 500;
+      }
 
-  .shot-hero{position:relative;display:flex;flex-direction:column;align-items:flex-end;gap:16px}
-  /* mug strip and menu shot share one explicit width so their edges always line up,
+      .shot-hero {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 16px;
+      }
+      /* mug strip and menu shot share one explicit width so their edges always line up,
      regardless of either image's aspect ratio */
-  .shot-hero img{border-radius:14px;border:1px solid var(--line);
-    box-shadow:0 40px 80px -30px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.02);
-    width:250px;height:auto}
-  .shot-hero .mug-strip{box-shadow:0 20px 44px -26px rgba(0,0,0,.6)}
-  .shot-hero::after{content:"";position:absolute;inset:auto 0 -30px 0;height:60px;
-    background:radial-gradient(50% 100% at 70% 0,var(--warm-soft),transparent);filter:blur(10px);z-index:-1}
-  @media(max-width:860px){.hero-grid{grid-template-columns:minmax(0,1fr);gap:40px}
-    .shot-hero{align-items:center}
-    .shot-hero img{width:210px}}
+      .shot-hero img {
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        box-shadow:
+          0 40px 80px -30px rgba(0, 0, 0, 0.7),
+          0 0 0 1px rgba(255, 255, 255, 0.02);
+        width: 250px;
+        height: auto;
+      }
+      .shot-hero .mug-strip {
+        box-shadow: 0 20px 44px -26px rgba(0, 0, 0, 0.6);
+      }
+      .shot-hero::after {
+        content: "";
+        position: absolute;
+        inset: auto 0 -30px 0;
+        height: 60px;
+        background: radial-gradient(50% 100% at 70% 0, var(--warm-soft), transparent);
+        filter: blur(10px);
+        z-index: -1;
+      }
+      @media (max-width: 860px) {
+        .hero-grid {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 40px;
+        }
+        .shot-hero {
+          align-items: center;
+        }
+        .shot-hero img {
+          width: 210px;
+        }
+      }
 
-  /* ---- section scaffold ---- */
-  section{padding:84px 0}
-  .head{max-width:34em;margin-bottom:46px}
-  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--faint);margin-bottom:14px}
-  h2{font-family:var(--display);font-weight:700;letter-spacing:-.018em;
-    font-size:clamp(28px,3.6vw,40px);line-height:1.08}
-  .head p{color:var(--muted);margin-top:14px;font-size:16.5px}
+      /* ---- section scaffold ---- */
+      section {
+        padding: 84px 0;
+      }
+      .head {
+        max-width: 34em;
+        margin-bottom: 46px;
+      }
+      .kicker {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--faint);
+        margin-bottom: 14px;
+      }
+      h2 {
+        font-family: var(--display);
+        font-weight: 700;
+        letter-spacing: -0.018em;
+        font-size: clamp(28px, 3.6vw, 40px);
+        line-height: 1.08;
+      }
+      .head p {
+        color: var(--muted);
+        margin-top: 14px;
+        font-size: 16.5px;
+      }
 
-  /* ---- features ---- */
-  .feats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
-    background:var(--line);border:1px solid var(--line);border-radius:16px;overflow:hidden}
-  .feat{background:var(--panel);padding:30px 26px 32px;position:relative;transition:background .2s}
-  .feat:hover{background:var(--panel2)}
-  .feat .tag{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--cool);
-    display:block;margin-bottom:18px}
-  .feat:nth-child(3n-1) .tag,.feat:nth-child(4) .tag,.feat:nth-child(5) .tag{color:var(--warm)}
-  .feat h3{font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:-.01em;margin-bottom:9px}
-  .feat p{color:var(--muted);font-size:14.5px;line-height:1.55}
-  @media(max-width:860px){.feats{grid-template-columns:1fr 1fr}}
-  @media(max-width:560px){.feats{grid-template-columns:1fr}}
+      /* ---- features ---- */
+      .feats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1px;
+        background: var(--line);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+      }
+      .feat {
+        background: var(--panel);
+        padding: 30px 26px 32px;
+        position: relative;
+        transition: background 0.2s;
+      }
+      .feat:hover {
+        background: var(--panel2);
+      }
+      .feat .tag {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        color: var(--cool);
+        display: block;
+        margin-bottom: 18px;
+      }
+      .feat:nth-child(3n-1) .tag,
+      .feat:nth-child(4) .tag,
+      .feat:nth-child(5) .tag {
+        color: var(--warm);
+      }
+      .feat h3 {
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: 19px;
+        letter-spacing: -0.01em;
+        margin-bottom: 9px;
+      }
+      .feat p {
+        color: var(--muted);
+        font-size: 14.5px;
+        line-height: 1.55;
+      }
+      @media (max-width: 860px) {
+        .feats {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      @media (max-width: 560px) {
+        .feats {
+          grid-template-columns: 1fr;
+        }
+      }
 
-  /* ---- showcase: each capability shown beside the screenshot that proves it ---- */
-  .showcase{display:flex;flex-direction:column;gap:72px}
-  .show-row{display:flex;gap:56px;align-items:center}
-  .show-row:nth-child(even){flex-direction:row-reverse}
-  .show-row > div{flex:1;min-width:0}
-  .show-shot{display:flex;justify-content:center}
-  .show-shot img{width:100%;height:auto;border-radius:14px;border:1px solid var(--line);
-    background:var(--panel);box-shadow:0 30px 70px -34px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.02)}
-  .show-text .tag{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--cool);
-    display:block;margin-bottom:14px}
-  .show-row:nth-child(even) .show-text .tag{color:var(--warm)}
-  .show-text h3{font-family:var(--display);font-weight:700;letter-spacing:-.015em;line-height:1.08;
-    font-size:clamp(24px,3vw,33px);margin-bottom:14px}
-  .show-text p{color:var(--muted);font-size:16.5px;line-height:1.6;max-width:34em}
-  @media(max-width:760px){
-    .show-row,.show-row:nth-child(even){flex-direction:column;gap:24px}
-    .show-text p{max-width:none}}
+      /* ---- showcase: each capability shown beside the screenshot that proves it ---- */
+      .showcase {
+        display: flex;
+        flex-direction: column;
+        gap: 72px;
+      }
+      .show-row {
+        display: flex;
+        gap: 56px;
+        align-items: center;
+      }
+      .show-row:nth-child(even) {
+        flex-direction: row-reverse;
+      }
+      .show-row > div {
+        flex: 1;
+        min-width: 0;
+      }
+      .show-shot {
+        display: flex;
+        justify-content: center;
+      }
+      .show-shot img {
+        width: 100%;
+        height: auto;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        box-shadow:
+          0 30px 70px -34px rgba(0, 0, 0, 0.7),
+          0 0 0 1px rgba(255, 255, 255, 0.02);
+      }
+      .show-text .tag {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        color: var(--cool);
+        display: block;
+        margin-bottom: 14px;
+      }
+      .show-row:nth-child(even) .show-text .tag {
+        color: var(--warm);
+      }
+      .show-text h3 {
+        font-family: var(--display);
+        font-weight: 700;
+        letter-spacing: -0.015em;
+        line-height: 1.08;
+        font-size: clamp(24px, 3vw, 33px);
+        margin-bottom: 14px;
+      }
+      .show-text p {
+        color: var(--muted);
+        font-size: 16.5px;
+        line-height: 1.6;
+        max-width: 34em;
+      }
+      @media (max-width: 760px) {
+        .show-row,
+        .show-row:nth-child(even) {
+          flex-direction: column;
+          gap: 24px;
+        }
+        .show-text p {
+          max-width: none;
+        }
+      }
 
-  /* ---- spec / how it works ---- */
-  .spec{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--panel)}
-  .spec .row{display:grid;grid-template-columns:200px 1fr;gap:24px;padding:20px 26px;
-    border-bottom:1px solid var(--line);align-items:baseline}
-  .spec .row:last-child{border-bottom:0}
-  .spec .what{font-family:var(--display);font-weight:600;font-size:16px}
-  .spec .api{font-family:var(--mono);font-size:13.5px;color:var(--muted)}
-  .spec .api b{color:var(--cool);font-weight:500}
-  .spec-note{font-family:var(--mono);font-size:12.5px;color:var(--faint);margin-top:20px}
-  @media(max-width:620px){.spec .row{grid-template-columns:1fr;gap:6px}}
+      /* ---- spec / how it works ---- */
+      .spec {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+        background: var(--panel);
+      }
+      .spec .row {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 24px;
+        padding: 20px 26px;
+        border-bottom: 1px solid var(--line);
+        align-items: baseline;
+      }
+      .spec .row:last-child {
+        border-bottom: 0;
+      }
+      .spec .what {
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: 16px;
+      }
+      .spec .api {
+        font-family: var(--mono);
+        font-size: 13.5px;
+        color: var(--muted);
+      }
+      .spec .api b {
+        color: var(--cool);
+        font-weight: 500;
+      }
+      .spec-note {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        color: var(--faint);
+        margin-top: 20px;
+      }
+      @media (max-width: 620px) {
+        .spec .row {
+          grid-template-columns: 1fr;
+          gap: 6px;
+        }
+      }
 
-  /* ---- install ---- */
-  .install-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;margin-bottom:30px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px}
-  .card h3{font-family:var(--display);font-weight:600;font-size:18px;margin-bottom:14px;
-    display:flex;align-items:center;gap:10px}
-  .card pre{background:var(--ink);border:1px solid var(--line);border-radius:10px;
-    padding:14px 16px;font-family:var(--mono);font-size:13px;color:var(--text);
-    overflow-x:auto;line-height:1.7}
-  .card pre .sigil{color:var(--cool)}
-  .card pre .cmt{color:var(--faint)}
-  .card p{color:var(--muted);font-size:14px;margin-top:14px}
-  .reqs{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
-  .pill{font-family:var(--mono);font-size:12px;color:var(--muted);
-    border:1px solid var(--line);border-radius:999px;padding:7px 14px}
-  .donate-row{margin-top:34px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-  .donate{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(90deg,var(--warm),#f6b86a);
-    color:#1a1205;font-weight:700;border-radius:11px;padding:13px 22px;font-size:14.5px;
-    transition:transform .15s,box-shadow .15s}
-  .donate:hover{transform:translateY(-1px);box-shadow:0 12px 30px -12px var(--warm)}
-  .donate.alt{background:transparent;color:var(--text);border:1px solid var(--cool);box-shadow:none}
-  .donate.alt:hover{box-shadow:0 12px 30px -16px var(--cool)}
-  .donate-row span{color:var(--muted);font-size:14px;flex-basis:100%}
-  @media(max-width:700px){.install-grid{grid-template-columns:minmax(0,1fr)}}
+      /* ---- install ---- */
+      .install-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 24px;
+        margin-bottom: 30px;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 28px;
+      }
+      .card h3 {
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: 18px;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .card pre {
+        background: var(--ink);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px 16px;
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--text);
+        overflow-x: auto;
+        line-height: 1.7;
+      }
+      .card pre .sigil {
+        color: var(--cool);
+      }
+      .card pre .cmt {
+        color: var(--faint);
+      }
+      .card p {
+        color: var(--muted);
+        font-size: 14px;
+        margin-top: 14px;
+      }
+      .reqs {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 6px;
+      }
+      .pill {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 7px 14px;
+      }
+      .donate-row {
+        margin-top: 34px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        flex-wrap: wrap;
+      }
+      .donate {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        background: linear-gradient(90deg, var(--warm), #f6b86a);
+        color: #1a1205;
+        font-weight: 700;
+        border-radius: 11px;
+        padding: 13px 22px;
+        font-size: 14.5px;
+        transition:
+          transform 0.15s,
+          box-shadow 0.15s;
+      }
+      .donate:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 30px -12px var(--warm);
+      }
+      .donate.alt {
+        background: transparent;
+        color: var(--text);
+        border: 1px solid var(--cool);
+        box-shadow: none;
+      }
+      .donate.alt:hover {
+        box-shadow: 0 12px 30px -16px var(--cool);
+      }
+      .donate-row span {
+        color: var(--muted);
+        font-size: 14px;
+        flex-basis: 100%;
+      }
+      @media (max-width: 700px) {
+        .install-grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
 
-  /* ---- footer ---- */
-  footer{padding:54px 0 70px;border-top:1px solid var(--line);margin-top:30px}
-  .foot{display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap}
-  .foot .brand{display:flex;align-items:center;gap:12px;font-family:var(--display);font-weight:700}
-  .foot .brand img{width:30px;height:30px}
-  .foot nav{display:flex;gap:22px;font-family:var(--mono);font-size:13px;color:var(--muted)}
-  .foot nav a:hover{color:var(--text)}
-  .foot .fineprint{width:100%;font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:8px}
+      /* ---- footer ---- */
+      footer {
+        padding: 54px 0 70px;
+        border-top: 1px solid var(--line);
+        margin-top: 30px;
+      }
+      .foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 24px;
+        flex-wrap: wrap;
+      }
+      .foot .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: var(--display);
+        font-weight: 700;
+      }
+      .foot .brand img {
+        width: 30px;
+        height: 30px;
+      }
+      .foot nav {
+        display: flex;
+        gap: 22px;
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .foot nav a:hover {
+        color: var(--text);
+      }
+      .foot .fineprint {
+        width: 100%;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--faint);
+        margin-top: 8px;
+      }
 
-  /* ---- reveal motion ---- */
-  .reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s ease}
-  .reveal.in{opacity:1;transform:none}
-  @media(prefers-reduced-motion:reduce){
-    html{scroll-behavior:auto}
-    .reveal{opacity:1;transform:none;transition:none}
-    .btn:hover,.donate:hover,.shot-hero img{transform:none}
-  }
-</style>
-</head>
-<body>
+      /* ---- reveal motion ---- */
+      .reveal {
+        opacity: 0;
+        transform: translateY(18px);
+        transition:
+          opacity 0.7s ease,
+          transform 0.7s ease;
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+        .reveal {
+          opacity: 1;
+          transform: none;
+          transition: none;
+        }
+        .btn:hover,
+        .donate:hover,
+        .shot-hero img {
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="menubar">
+      <span class="glyph" aria-hidden="true"></span>
+      <nav>
+        <a href="#features">Features</a>
+        <a href="#screens">Screenshots</a>
+        <a href="#how">How it works</a>
+        <a href="#install">Install</a>
+      </nav>
+      <span class="spacer"></span>
+      <span class="status">
+        <span>100%&nbsp;6500K</span>
+        <span class="mug"><img src="assets/icon.png" alt="" />awake</span>
+      </span>
+    </div>
 
-<div class="menubar">
-  <span class="glyph" aria-hidden="true"></span>
-  <nav>
-    <a href="#features">Features</a>
-    <a href="#screens">Screenshots</a>
-    <a href="#how">How it works</a>
-    <a href="#install">Install</a>
-  </nav>
-  <span class="spacer"></span>
-  <span class="status">
-    <span>100%&nbsp;6500K</span>
-    <span class="mug"><img src="assets/icon.png" alt="" />awake</span>
-  </span>
-</div>
-
-<header class="hero">
-  <div class="wrap hero-grid">
-    <div class="reveal in">
-      <span class="eyebrow">macOS menu-bar app, Apple Silicon, open source</span>
-      <h1>Total control of your <span class="warm">Mac's displays.</span></h1>
-      <p class="lede">Disable screens, force crisp HiDPI, push brightness past 100%, warm the colors (auto at night), snap windows into place, make any window float or go transparent, reach your Mac from anywhere - and keep it awake. All from one coffee mug in your menu bar.</p>
-      <div class="cta">
-        <a class="btn download" href="https://github.com/oabdrabo/DisplayDeck/releases/latest/download/DisplayDeck.app.zip">
-          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 1a1 1 0 0 1 1 1v6.59l2.3-2.3a1 1 0 1 1 1.4 1.42l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 1.4-1.42L7 8.59V2a1 1 0 0 1 1-1Zm-5 12a1 1 0 1 0 0 2h10a1 1 0 1 0 0-2H3Z"/></svg>
-          Download for Mac
-        </a>
-        <div class="brew">
-          <code id="brewcmd"><span class="sigil">$</span> brew install --cask oabdrabo/tap/displaydeck</code>
-          <button id="copybtn" aria-label="Copy install command">Copy</button>
+    <header class="hero">
+      <div class="wrap hero-grid">
+        <div class="reveal in">
+          <span class="eyebrow">macOS menu-bar app, Apple Silicon, open source</span>
+          <h1>Total control of your <span class="warm">Mac's displays.</span></h1>
+          <p class="lede">
+            Disable screens, force crisp HiDPI, push brightness past 100%, warm the colors (auto at night), snap windows into place, make any window float or go transparent, reach your Mac from
+            anywhere - and keep it awake. All from one coffee mug in your menu bar.
+          </p>
+          <div class="cta">
+            <a class="btn download" href="https://github.com/oabdrabo/DisplayDeck/releases/latest/download/DisplayDeck.app.zip">
+              <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path d="M8 1a1 1 0 0 1 1 1v6.59l2.3-2.3a1 1 0 1 1 1.4 1.42l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 1.4-1.42L7 8.59V2a1 1 0 0 1 1-1Zm-5 12a1 1 0 1 0 0 2h10a1 1 0 1 0 0-2H3Z" />
+              </svg>
+              Download for Mac
+            </a>
+            <div class="brew">
+              <code id="brewcmd"><span class="sigil">$</span> brew install --cask oabdrabo/tap/displaydeck</code>
+              <button id="copybtn" aria-label="Copy install command">Copy</button>
+            </div>
+            <a class="btn" href="https://github.com/oabdrabo/DisplayDeck">
+              <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path
+                  d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+                />
+              </svg>
+              GitHub
+            </a>
+          </div>
+          <div class="meta">
+            <span><b>Free &amp; MIT</b></span>
+            <span><b>Under 1 MB</b></span>
+            <span><b>No telemetry</b></span>
+            <span><b>macOS 14+</b></span>
+          </div>
         </div>
-        <a class="btn" href="https://github.com/oabdrabo/DisplayDeck">
-          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-          GitHub
-        </a>
-      </div>
-      <div class="meta">
-        <span><b>Free &amp; MIT</b></span>
-        <span><b>Under 1 MB</b></span>
-        <span><b>No telemetry</b></span>
-        <span><b>macOS 14+</b></span>
-      </div>
-    </div>
-    <div class="shot-hero reveal in">
-      <img class="mug-strip" src="assets/screenshots/menubar.png" alt="DisplayDeck's menu-bar mug - empty when idle, filled while keeping awake" />
-      <img src="assets/screenshots/menu.png" alt="DisplayDeck menu - brightness and warmth sliders, window snapping, and per-app transparency controls" />
-    </div>
-  </div>
-</header>
-
-<hr class="thread" />
-
-<section id="features">
-  <div class="wrap">
-    <div class="head reveal">
-      <div class="kicker">What it does</div>
-      <h2>Total display &amp; window control, one menu.</h2>
-      <p>Each one leans on a private macOS framework to do something the system settings won't let you.</p>
-    </div>
-    <div class="feats reveal">
-      <div class="feat"><span class="tag">DISPLAY</span><h3>Disable any screen</h3><p>Turn off the built-in panel in clamshell or headless setups so it stays dark when the lid opens. Auto-disable on external connect - with a failsafe that re-enables it if a disconnect would leave you with no usable screen.</p></div>
-      <div class="feat"><span class="tag">SCALING</span><h3>Force HiDPI</h3><p>Add crisp, retina-scaled resolutions to displays that don't natively offer them, plus a "More Space" supersampling tier and optional persistent override plists.</p></div>
-      <div class="feat"><span class="tag">LIGHT</span><h3>Brightness + EDR boost</h3><p>Built-in and external brightness, an inline auto-brightness toggle, and a boost above 100% through an EDR overlay - large on XDR/HDR panels, a visible lift on standard ones.</p></div>
-      <div class="feat"><span class="tag">COLOR</span><h3>Warmth + auto-night</h3><p>A per-display color-temperature slider, f.lux style: neutral 6500&nbsp;K down to a warm ~3400&nbsp;K via gamma ramps. An automatic night schedule (the 🌙 toggle) eases warmth on at dusk and off by morning, hands-free.</p></div>
-      <div class="feat"><span class="tag">TILING</span><h3>Window snapping</h3><p>Tile the focused window to halves, quarters, thirds, maximize or center - with global ⌃⌥ shortcuts, drag-to-edge snapping, and a menu of layout glyphs. No SIP changes needed.</p></div>
-      <div class="feat"><span class="tag">LAYOUT</span><h3>Arrange every window</h3><p>Tile all your windows at once - a 2×2 grid, or one window centered <em>over</em> the grid with the rest peeking around its edges. Cycle the layouts, promote the focused window to the center, or rotate which window is centered, all on ⌃⌥⇧ shortcuts.</p></div>
-      <div class="feat"><span class="tag">WINDOWS</span><h3>Transparency, float &amp; PiP</h3><p>Set any app's opacity, add frosted-glass blur, keep a window on top, or shrink one into a still-usable floating corner.</p></div>
-      <div class="feat"><span class="tag">REMOTE</span><h3>Remote access</h3><p>Reach this Mac - and your other Macs - from anywhere, nothing to install. An auto-reconnecting reverse-SSH tunnel through a relay you control forwards SSH, Screen Sharing, and file transfer; peers are auto-discovered with live online status, so you can Screen Share, SSH, or send files from the menu. Stays awake while on so it's reachable.</p></div>
-      <div class="feat"><span class="tag">POWER</span><h3>Keep awake</h3><p>An IOKit caffeine assertion so your Mac and its display won't sleep - indefinitely (a toggle), or for a duration you pick. Left-click the mug to toggle.</p></div>
-      <div class="feat"><span class="tag">TEXT</span><h3>Text smoothing</h3><p>Toggle macOS's grayscale antialiasing on/off - one system-wide switch across every display, the built-in included. Most visible on non-Retina, external, or scaled monitors. macOS treats it as binary, so it's a single switch.</p></div>
-    </div>
-  </div>
-</section>
-
-<section id="screens" style="padding-top:0">
-  <div class="wrap">
-    <div class="head reveal">
-      <div class="kicker">A closer look</div>
-      <h2>Every control, shown where you use it.</h2>
-      <p>Real captures from the menu bar - each one is the actual control, not a mockup.</p>
-    </div>
-    <div class="showcase">
-      <div class="show-row reveal">
-        <div class="show-shot"><img src="assets/screenshots/brightness-warmth.png" alt="Built-in display brightness and warmth sliders, each at 100%, with an auto-brightness toggle and a moon auto-night-warmth toggle" /></div>
-        <div class="show-text">
-          <span class="tag">LIGHT &amp; COLOR</span>
-          <h3>Brightness past 100%, color that warms at night</h3>
-          <p>Push the panel beyond full brightness with a real EDR boost, and ease the color temperature warm on a schedule after dark. Per display, with an auto-brightness toggle and a one-tap night mode.</p>
+        <div class="shot-hero reveal in">
+          <img class="mug-strip" src="assets/screenshots/menubar.png" alt="DisplayDeck's menu-bar mug - empty when idle, filled while keeping awake" />
+          <img src="assets/screenshots/menu.png" alt="DisplayDeck menu - brightness and warmth sliders, window snapping, and per-app transparency controls" />
         </div>
       </div>
-      <div class="show-row reveal">
-        <div class="show-shot"><img src="assets/screenshots/resolution.png" alt="Curated resolution picker with looks-like sizes, HiDPI/Standard type, refresh rate, and a star marking the panel-native mode" /></div>
-        <div class="show-text">
-          <span class="tag">SCALING</span>
-          <h3>Resolutions macOS won't show you</h3>
-          <p>A curated picker - ★ marks the panel-native, crispest mode - plus Force HiDPI's scaled "More Space" tiers. The retina sizes your display can actually do, that the system settings leave out.</p>
-        </div>
-      </div>
-      <div class="show-row reveal">
-        <div class="show-shot"><img src="assets/screenshots/windowsnap.png" alt="Window snap submenu with a layout glyph and ⌃⌥ shortcut beside every tiling option" /></div>
-        <div class="show-text">
-          <span class="tag">TILING</span>
-          <h3>Snap windows where you mean to</h3>
-          <p>Halves, quarters, thirds, maximize or center - by dragging to a screen edge, a global ⌃⌥ shortcut, or the menu. Every option shows a little screen glyph so you pick the right one at a glance.</p>
-        </div>
-      </div>
-      <div class="show-row reveal">
-        <div class="show-shot"><img src="assets/screenshots/arrange.png" alt="Arrange Windows submenu - Grid 2×2, Centered over Grid, Cycle Layout, Promote to Main, Center Next/Previous, and Restore, each with a ⌃⌥⇧ shortcut" /></div>
-        <div class="show-text">
-          <span class="tag">LAYOUT</span>
-          <h3>Arrange every window, not just one</h3>
-          <p>Tile them all into a 2×2 grid, or float one centered <em>over</em> the grid so the rest stay visible around it. Cycle the two layouts, promote the focused window to the center, or rotate the centered one through the set - by keystroke or from the menu.</p>
-        </div>
-      </div>
-      <div class="show-row reveal">
-        <div class="show-shot"><img src="assets/screenshots/transparency.png" alt="Per-app transparency rows - an opacity slider, a picture-in-picture button and a keep-on-top pin for each app, plus an all-apps slider and reset" /></div>
-        <div class="show-text">
-          <span class="tag">WINDOWS</span>
-          <h3>See-through windows, float &amp; picture-in-picture</h3>
-          <p>Dial any app's opacity, add a frosted-glass blur, keep a window on top, or shrink one into a still-usable floating corner - for <em>any</em> app, per-app or all at once, not just the ones built to support it.</p>
-        </div>
-      </div>
-      <div class="show-row reveal">
-        <div class="show-shot"><img src="assets/screenshots/remote.png" alt="Remote Access submenu - relay field, connection status, this Mac's ports, and discovered Macs with live status" /></div>
-        <div class="show-text">
-          <span class="tag">REMOTE</span>
-          <h3>Your Macs, reachable from anywhere</h3>
-          <p>One reverse-SSH tunnel through a relay you control - Screen Share, SSH, or transfer files to any of your Macs, each shown with live online status. Nothing to install, no third-party service. It even tells you why if a connection can't be made.</p>
-        </div>
-      </div>
-      <div class="show-row reveal">
-        <div class="show-shot"><img src="assets/screenshots/keepawake.png" alt="Keep Awake submenu with a toggle and timed durations from 15 minutes to 5 hours" /></div>
-        <div class="show-text">
-          <span class="tag">POWER</span>
-          <h3>Stay awake, on your schedule</h3>
-          <p>Keep the Mac and its display from sleeping - on indefinitely, or for anywhere from 15 minutes to 5 hours. Or just left-click the mug to flip it on and off.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+    </header>
 
-<hr class="thread" />
+    <hr class="thread" />
 
-<section id="how">
-  <div class="wrap">
-    <div class="head reveal">
-      <div class="kicker">Under the hood</div>
-      <h2>Built on the frameworks Apple doesn't document.</h2>
-      <p>No bundled binaries, no daemon, nothing phoned home - just direct calls into private CoreGraphics, SkyLight and DisplayServices APIs.</p>
-    </div>
-    <div class="spec reveal">
-      <div class="row"><span class="what">Disable display</span><span class="api"><b>CGSConfigureDisplayEnabled</b> - flips a screen off at the window-server level</span></div>
-      <div class="row"><span class="what">Force HiDPI</span><span class="api">mirrors the panel onto a private <b>SLVirtualDisplay</b> + writes display-override plists</span></div>
-      <div class="row"><span class="what">Warmth</span><span class="api"><b>CGSetDisplayTransferByTable</b> - per-channel gamma ramps</span></div>
-      <div class="row"><span class="what">Brightness boost</span><span class="api">a borderless <b>CAMetalLayer</b> EDR overlay (multiply blend) that drives the panel past 100%</span></div>
-      <div class="row"><span class="what">Window snapping</span><span class="api">tiles the focused window through the Accessibility API + global <b>RegisterEventHotKey</b> hot keys</span></div>
-      <div class="row"><span class="what">Transparency &amp; blur</span><span class="api">a scripting addition injected into Dock calling <b>SLSSetWindowAlpha</b> over a private socket</span></div>
-      <div class="row"><span class="what">Picture-in-Picture</span><span class="api">resizes the real window through the Accessibility API (<b>AXUIElement</b>)</span></div>
-      <div class="row"><span class="what">Remote access</span><span class="api">built-in <b>/usr/bin/ssh&nbsp;-R</b> reverse tunnel to a relay you control, auto-reconnecting, with read-only peer discovery</span></div>
-    </div>
-    <p class="spec-note">// Because these are private APIs, behavior can change between macOS releases.</p>
-  </div>
-</section>
-
-<hr class="thread" />
-
-<section id="install">
-  <div class="wrap">
-    <div class="head reveal">
-      <div class="kicker">Get it</div>
-      <h2>Two ways in.</h2>
-    </div>
-    <div class="install-grid reveal">
-      <div class="card">
-        <h3>Homebrew</h3>
-        <pre><span class="sigil">$</span> brew install --cask oabdrabo/tap/displaydeck</pre>
-        <p>The cask installs to <code>/Applications</code> and clears the Gatekeeper flag for you. Update any time with <code>brew upgrade --cask displaydeck</code>.</p>
+    <section id="features">
+      <div class="wrap">
+        <div class="head reveal">
+          <div class="kicker">What it does</div>
+          <h2>Total display &amp; window control, one menu.</h2>
+          <p>Each one leans on a private macOS framework to do something the system settings won't let you.</p>
+        </div>
+        <div class="feats reveal">
+          <div class="feat">
+            <span class="tag">DISPLAY</span>
+            <h3>Disable any screen</h3>
+            <p>
+              Turn off the built-in panel in clamshell or headless setups so it stays dark when the lid opens. Auto-disable on external connect - with a failsafe that re-enables it if a disconnect
+              would leave you with no usable screen.
+            </p>
+          </div>
+          <div class="feat">
+            <span class="tag">SCALING</span>
+            <h3>Force HiDPI</h3>
+            <p>Add crisp, retina-scaled resolutions to displays that don't natively offer them, plus a "More Space" supersampling tier and optional persistent override plists.</p>
+          </div>
+          <div class="feat">
+            <span class="tag">LIGHT</span>
+            <h3>Brightness + EDR boost</h3>
+            <p>Built-in and external brightness, an inline auto-brightness toggle, and a boost above 100% through an EDR overlay - large on XDR/HDR panels, a visible lift on standard ones.</p>
+          </div>
+          <div class="feat">
+            <span class="tag">COLOR</span>
+            <h3>Warmth + auto-night</h3>
+            <p>
+              A per-display color-temperature slider, f.lux style: neutral 6500&nbsp;K down to a warm ~3400&nbsp;K via gamma ramps. An automatic night schedule (the 🌙 toggle) eases warmth on at dusk
+              and off by morning, hands-free.
+            </p>
+          </div>
+          <div class="feat">
+            <span class="tag">TILING</span>
+            <h3>Window snapping</h3>
+            <p>Tile the focused window to halves, quarters, thirds, maximize or center - with global ⌃⌥ shortcuts, drag-to-edge snapping, and a menu of layout glyphs. No SIP changes needed.</p>
+          </div>
+          <div class="feat">
+            <span class="tag">LAYOUT</span>
+            <h3>Arrange every window</h3>
+            <p>
+              Tile all your windows at once - a 2×2 grid, or one window centered <em>over</em> the grid with the rest peeking around its edges. Cycle the layouts, promote the focused window to the
+              center, or rotate which window is centered, all on ⌃⌥⇧ shortcuts.
+            </p>
+          </div>
+          <div class="feat">
+            <span class="tag">WINDOWS</span>
+            <h3>Transparency, float &amp; PiP</h3>
+            <p>Set any app's opacity, add frosted-glass blur, keep a window on top, or shrink one into a still-usable floating corner.</p>
+          </div>
+          <div class="feat">
+            <span class="tag">REMOTE</span>
+            <h3>Remote access</h3>
+            <p>
+              Reach this Mac - and your other Macs - from anywhere, nothing to install. An auto-reconnecting reverse-SSH tunnel through a relay you control forwards SSH, Screen Sharing, and file
+              transfer; peers are auto-discovered with live online status, so you can Screen Share, SSH, or send files from the menu. Stays awake while on so it's reachable.
+            </p>
+          </div>
+          <div class="feat">
+            <span class="tag">POWER</span>
+            <h3>Keep awake</h3>
+            <p>An IOKit caffeine assertion so your Mac and its display won't sleep - indefinitely (a toggle), or for a duration you pick. Left-click the mug to toggle.</p>
+          </div>
+          <div class="feat">
+            <span class="tag">TEXT</span>
+            <h3>Text smoothing</h3>
+            <p>
+              Toggle macOS's grayscale antialiasing on/off - one system-wide switch across every display, the built-in included. Most visible on non-Retina, external, or scaled monitors. macOS treats
+              it as binary, so it's a single switch.
+            </p>
+          </div>
+        </div>
       </div>
-      <div class="card">
-        <h3>From source</h3>
-        <pre><span class="cmt"># needs Xcode command-line tools</span>
+    </section>
+
+    <section id="screens" style="padding-top: 0">
+      <div class="wrap">
+        <div class="head reveal">
+          <div class="kicker">A closer look</div>
+          <h2>Every control, shown where you use it.</h2>
+          <p>Real captures from the menu bar - each one is the actual control, not a mockup.</p>
+        </div>
+        <div class="showcase">
+          <div class="show-row reveal">
+            <div class="show-shot">
+              <img
+                src="assets/screenshots/brightness-warmth.png"
+                alt="Built-in display brightness and warmth sliders, each at 100%, with an auto-brightness toggle and a moon auto-night-warmth toggle"
+              />
+            </div>
+            <div class="show-text">
+              <span class="tag">LIGHT &amp; COLOR</span>
+              <h3>Brightness past 100%, color that warms at night</h3>
+              <p>
+                Push the panel beyond full brightness with a real EDR boost, and ease the color temperature warm on a schedule after dark. Per display, with an auto-brightness toggle and a one-tap
+                night mode.
+              </p>
+            </div>
+          </div>
+          <div class="show-row reveal">
+            <div class="show-shot">
+              <img src="assets/screenshots/resolution.png" alt="Curated resolution picker with looks-like sizes, HiDPI/Standard type, refresh rate, and a star marking the panel-native mode" />
+            </div>
+            <div class="show-text">
+              <span class="tag">SCALING</span>
+              <h3>Resolutions macOS won't show you</h3>
+              <p>
+                A curated picker - ★ marks the panel-native, crispest mode - plus Force HiDPI's scaled "More Space" tiers. The retina sizes your display can actually do, that the system settings leave
+                out.
+              </p>
+            </div>
+          </div>
+          <div class="show-row reveal">
+            <div class="show-shot"><img src="assets/screenshots/windowsnap.png" alt="Window snap submenu with a layout glyph and ⌃⌥ shortcut beside every tiling option" /></div>
+            <div class="show-text">
+              <span class="tag">TILING</span>
+              <h3>Snap windows where you mean to</h3>
+              <p>
+                Halves, quarters, thirds, maximize or center - by dragging to a screen edge, a global ⌃⌥ shortcut, or the menu. Every option shows a little screen glyph so you pick the right one at a
+                glance.
+              </p>
+            </div>
+          </div>
+          <div class="show-row reveal">
+            <div class="show-shot">
+              <img
+                src="assets/screenshots/arrange.png"
+                alt="Arrange Windows submenu - Grid 2×2, Centered over Grid, Cycle Layout, Promote to Main, Center Next/Previous, and Restore, each with a ⌃⌥⇧ shortcut"
+              />
+            </div>
+            <div class="show-text">
+              <span class="tag">LAYOUT</span>
+              <h3>Arrange every window, not just one</h3>
+              <p>
+                Tile them all into a 2×2 grid, or float one centered <em>over</em> the grid so the rest stay visible around it. Cycle the two layouts, promote the focused window to the center, or
+                rotate the centered one through the set - by keystroke or from the menu.
+              </p>
+            </div>
+          </div>
+          <div class="show-row reveal">
+            <div class="show-shot">
+              <img
+                src="assets/screenshots/transparency.png"
+                alt="Per-app transparency rows - an opacity slider, a picture-in-picture button and a keep-on-top pin for each app, plus an all-apps slider and reset"
+              />
+            </div>
+            <div class="show-text">
+              <span class="tag">WINDOWS</span>
+              <h3>See-through windows, float &amp; picture-in-picture</h3>
+              <p>
+                Dial any app's opacity, add a frosted-glass blur, keep a window on top, or shrink one into a still-usable floating corner - for <em>any</em> app, per-app or all at once, not just the
+                ones built to support it.
+              </p>
+            </div>
+          </div>
+          <div class="show-row reveal">
+            <div class="show-shot">
+              <img src="assets/screenshots/remote.png" alt="Remote Access submenu - relay field, connection status, this Mac's ports, and discovered Macs with live status" />
+            </div>
+            <div class="show-text">
+              <span class="tag">REMOTE</span>
+              <h3>Your Macs, reachable from anywhere</h3>
+              <p>
+                One reverse-SSH tunnel through a relay you control - Screen Share, SSH, or transfer files to any of your Macs, each shown with live online status. Nothing to install, no third-party
+                service. It even tells you why if a connection can't be made.
+              </p>
+            </div>
+          </div>
+          <div class="show-row reveal">
+            <div class="show-shot"><img src="assets/screenshots/keepawake.png" alt="Keep Awake submenu with a toggle and timed durations from 15 minutes to 5 hours" /></div>
+            <div class="show-text">
+              <span class="tag">POWER</span>
+              <h3>Stay awake, on your schedule</h3>
+              <p>Keep the Mac and its display from sleeping - on indefinitely, or for anywhere from 15 minutes to 5 hours. Or just left-click the mug to flip it on and off.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="thread" />
+
+    <section id="how">
+      <div class="wrap">
+        <div class="head reveal">
+          <div class="kicker">Under the hood</div>
+          <h2>Built on the frameworks Apple doesn't document.</h2>
+          <p>No bundled binaries, no daemon, nothing phoned home - just direct calls into private CoreGraphics, SkyLight and DisplayServices APIs.</p>
+        </div>
+        <div class="spec reveal">
+          <div class="row">
+            <span class="what">Disable display</span><span class="api"><b>CGSConfigureDisplayEnabled</b> - flips a screen off at the window-server level</span>
+          </div>
+          <div class="row">
+            <span class="what">Force HiDPI</span><span class="api">mirrors the panel onto a private <b>SLVirtualDisplay</b> + writes display-override plists</span>
+          </div>
+          <div class="row">
+            <span class="what">Warmth</span><span class="api"><b>CGSetDisplayTransferByTable</b> - per-channel gamma ramps</span>
+          </div>
+          <div class="row">
+            <span class="what">Brightness boost</span><span class="api">a borderless <b>CAMetalLayer</b> EDR overlay (multiply blend) that drives the panel past 100%</span>
+          </div>
+          <div class="row">
+            <span class="what">Window snapping</span><span class="api">tiles the focused window through the Accessibility API + global <b>RegisterEventHotKey</b> hot keys</span>
+          </div>
+          <div class="row">
+            <span class="what">Transparency &amp; blur</span><span class="api">a scripting addition injected into Dock calling <b>SLSSetWindowAlpha</b> over a private socket</span>
+          </div>
+          <div class="row"><span class="what">Picture-in-Picture</span><span class="api">resizes the real window through the Accessibility API (<b>AXUIElement</b>)</span></div>
+          <div class="row">
+            <span class="what">Remote access</span><span class="api">built-in <b>/usr/bin/ssh&nbsp;-R</b> reverse tunnel to a relay you control, auto-reconnecting, with read-only peer discovery</span>
+          </div>
+        </div>
+        <p class="spec-note">// Because these are private APIs, behavior can change between macOS releases.</p>
+      </div>
+    </section>
+
+    <hr class="thread" />
+
+    <section id="install">
+      <div class="wrap">
+        <div class="head reveal">
+          <div class="kicker">Get it</div>
+          <h2>Two ways in.</h2>
+        </div>
+        <div class="install-grid reveal">
+          <div class="card">
+            <h3>Homebrew</h3>
+            <pre><span class="sigil">$</span> brew install --cask oabdrabo/tap/displaydeck</pre>
+            <p>The cask installs to <code>/Applications</code> and clears the Gatekeeper flag for you. Update any time with <code>brew upgrade --cask displaydeck</code>.</p>
+          </div>
+          <div class="card">
+            <h3>From source</h3>
+            <pre><span class="cmt"># needs Xcode command-line tools</span>
 <span class="sigil">$</span> git clone https://github.com/oabdrabo/DisplayDeck
 <span class="sigil">$</span> cd DisplayDeck && make install</pre>
-        <p>Builds, ad-hoc signs, copies to <code>/Applications</code>, and launches. Starts at login by default.</p>
+            <p>Builds, ad-hoc signs, copies to <code>/Applications</code>, and launches. Starts at login by default.</p>
+          </div>
+        </div>
+        <div class="reqs reveal">
+          <span class="pill">macOS 14+</span>
+          <span class="pill">Apple Silicon</span>
+          <span class="pill">Transparency &amp; blur need SIP off + -arm64e_preview_abi</span>
+        </div>
+        <div class="donate-row reveal">
+          <a class="donate" href="https://donate.stripe.com/3cI6oI7Gh1PG0eV8MJ5kk00">☕ Donate once</a>
+          <a class="donate alt" href="https://buy.stripe.com/00wbJ2f8J51S9Pv1kh5kk01">💜 Sponsor monthly</a>
+          <span>Free, open-source, no ads - pay what you like if it's useful.</span>
+        </div>
       </div>
-    </div>
-    <div class="reqs reveal">
-      <span class="pill">macOS 14+</span>
-      <span class="pill">Apple Silicon</span>
-      <span class="pill">Transparency &amp; blur need SIP off + -arm64e_preview_abi</span>
-    </div>
-    <div class="donate-row reveal">
-      <a class="donate" href="https://donate.stripe.com/3cI6oI7Gh1PG0eV8MJ5kk00">☕ Donate once</a>
-      <a class="donate alt" href="https://buy.stripe.com/00wbJ2f8J51S9Pv1kh5kk01">💜 Sponsor monthly</a>
-      <span>Free, open-source, no ads - pay what you like if it's useful.</span>
-    </div>
-  </div>
-</section>
+    </section>
 
-<footer>
-  <div class="wrap foot">
-    <span class="brand"><img src="assets/icon.png" alt="" />DisplayDeck</span>
-    <nav>
-      <a href="https://github.com/oabdrabo/DisplayDeck">GitHub</a>
-      <a href="https://github.com/oabdrabo/DisplayDeck/releases/latest">Releases</a>
-      <a href="https://github.com/oabdrabo/DisplayDeck/blob/main/CONTRIBUTING.md">Contributing</a>
-      <a href="https://donate.stripe.com/3cI6oI7Gh1PG0eV8MJ5kk00">Donate</a>
-    </nav>
-    <p class="fineprint">MIT</p>
-  </div>
-</footer>
+    <footer>
+      <div class="wrap foot">
+        <span class="brand"><img src="assets/icon.png" alt="" />DisplayDeck</span>
+        <nav>
+          <a href="https://github.com/oabdrabo/DisplayDeck">GitHub</a>
+          <a href="https://github.com/oabdrabo/DisplayDeck/releases/latest">Releases</a>
+          <a href="https://github.com/oabdrabo/DisplayDeck/blob/main/CONTRIBUTING.md">Contributing</a>
+          <a href="https://donate.stripe.com/3cI6oI7Gh1PG0eV8MJ5kk00">Donate</a>
+        </nav>
+        <p class="fineprint">MIT</p>
+      </div>
+    </footer>
 
-<script>
-  // copy install command
-  const btn=document.getElementById('copybtn');
-  btn.addEventListener('click',async()=>{
-    try{await navigator.clipboard.writeText('brew install --cask oabdrabo/tap/displaydeck');
-      btn.textContent='Copied';btn.classList.add('copied');
-      setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('copied')},1600);
-    }catch(e){btn.textContent='⌘C';}
-  });
-  // scroll reveal
-  const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
-  document.querySelectorAll('.reveal:not(.in)').forEach(el=>io.observe(el));
-</script>
+    <script>
+      // copy install command
+      const btn = document.getElementById("copybtn");
+      btn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText("brew install --cask oabdrabo/tap/displaydeck");
+          btn.textContent = "Copied";
+          btn.classList.add("copied");
+          setTimeout(() => {
+            btn.textContent = "Copy";
+            btn.classList.remove("copied");
+          }, 1600);
+        } catch (e) {
+          btn.textContent = "⌘C";
+        }
+      });
+      // scroll reveal
+      const io = new IntersectionObserver(
+        (es) => {
+          es.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              io.unobserve(e.target);
+            }
+          });
+        },
+        { threshold: 0.12 },
+      );
+      document.querySelectorAll(".reveal:not(.in)").forEach((el) => io.observe(el));
+    </script>
 
-<script>
-(function () {
-  function clean(t) {
-    return (t || '').split('\n')
-      .map(function (l) { return l.replace(/^\s*\$\s/, '').replace(/\s+$/, ''); })
-      .filter(function (l) { return l && l.charAt(0) !== '#'; })
-      .join('\n').trim();
-  }
-  var toast;
-  function showToast() {
-    if (!toast) {
-      toast = document.createElement('div');
-      toast.textContent = 'Copied to clipboard';
-      toast.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(8px);background:#f0a24a;color:#13151a;font:600 13px/1 -apple-system,system-ui,sans-serif;padding:10px 16px;border-radius:10px;opacity:0;transition:opacity .18s,transform .18s;z-index:9999;pointer-events:none';
-      document.body.appendChild(toast);
-    }
-    requestAnimationFrame(function () { toast.style.opacity = '1'; toast.style.transform = 'translateX(-50%) translateY(0)'; });
-    clearTimeout(toast._t);
-    toast._t = setTimeout(function () { toast.style.opacity = '0'; toast.style.transform = 'translateX(-50%) translateY(8px)'; }, 1500);
-  }
-  function copy(el) {
-    var text = clean(el.innerText || el.textContent);
-    if (!text) return;
-    var done = function () { showToast(); if (window.ddTrack) window.ddTrack('copy_command'); };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(done, fallback);
-    } else { fallback(); }
-    function fallback() {
-      var ta = document.createElement('textarea');
-      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-      document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); done(); } catch (e) {}
-      document.body.removeChild(ta);
-    }
-  }
-  var els = [].slice.call(document.querySelectorAll('pre'));
-  var bc = document.getElementById('brewcmd');
-  if (bc) els.push(bc);
-  els.forEach(function (el) {
-    el.style.cursor = 'copy';
-    el.title = 'Click to copy';
-    el.setAttribute('role', 'button');
-    el.addEventListener('click', function () { copy(el); });
-  });
-})();
-</script>
+    <script>
+      (function () {
+        function clean(t) {
+          return (t || "")
+            .split("\n")
+            .map(function (l) {
+              return l.replace(/^\s*\$\s/, "").replace(/\s+$/, "");
+            })
+            .filter(function (l) {
+              return l && l.charAt(0) !== "#";
+            })
+            .join("\n")
+            .trim();
+        }
+        var toast;
+        function showToast() {
+          if (!toast) {
+            toast = document.createElement("div");
+            toast.textContent = "Copied to clipboard";
+            toast.style.cssText =
+              "position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(8px);background:#f0a24a;color:#13151a;font:600 13px/1 -apple-system,system-ui,sans-serif;padding:10px 16px;border-radius:10px;opacity:0;transition:opacity .18s,transform .18s;z-index:9999;pointer-events:none";
+            document.body.appendChild(toast);
+          }
+          requestAnimationFrame(function () {
+            toast.style.opacity = "1";
+            toast.style.transform = "translateX(-50%) translateY(0)";
+          });
+          clearTimeout(toast._t);
+          toast._t = setTimeout(function () {
+            toast.style.opacity = "0";
+            toast.style.transform = "translateX(-50%) translateY(8px)";
+          }, 1500);
+        }
+        function copy(el) {
+          var text = clean(el.innerText || el.textContent);
+          if (!text) return;
+          var done = function () {
+            showToast();
+            if (window.ddTrack) window.ddTrack("copy_command");
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, fallback);
+          } else {
+            fallback();
+          }
+          function fallback() {
+            var ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+              document.execCommand("copy");
+              done();
+            } catch (e) {}
+            document.body.removeChild(ta);
+          }
+        }
+        var els = [].slice.call(document.querySelectorAll("pre"));
+        var bc = document.getElementById("brewcmd");
+        if (bc) els.push(bc);
+        els.forEach(function (el) {
+          el.style.cursor = "copy";
+          el.title = "Click to copy";
+          el.setAttribute("role", "button");
+          el.addEventListener("click", function () {
+            copy(el);
+          });
+        });
+      })();
+    </script>
 
-<script>
-(function () {
-  var H = location.hostname;
-  if (!/\.pyxis3\.ai$/.test(H)) return;
-  var q = new URLSearchParams(location.search);
-  var cid = q.get('cid') || '';
-  var utm = new URLSearchParams();
-  q.forEach(function (v, k) { if (/^utm_/.test(k)) utm.set(k, v); });
-  var J = function (b) { return new Blob([JSON.stringify(b)], { type: 'application/json' }); };
-  function ev(name, value) {
-    try { navigator.sendBeacon('/api/event', J({ host: H, name: name, value: value || 0, cid: cid })); } catch (e) {}
-  }
-  function conv(label, value) {
-    new Image().src = '/api/conv?host=' + encodeURIComponent(H) + '&label=' + encodeURIComponent(label) + '&value=' + (value || 0) + '&cid=' + cid;
-  }
-  window.ddTrack = ev;
-  ev('visit');
-  if (utm.toString()) document.querySelectorAll('a[href*=".pyxis3.ai"]').forEach(function (a) {
-    try { var u = new URL(a.href); utm.forEach(function (v, k) { if (!u.searchParams.has(k)) u.searchParams.set(k, v); }); a.href = u.toString(); } catch (e) {}
-  });
-  var copybtn = document.getElementById('copybtn');
-  if (copybtn) copybtn.addEventListener('click', function () { ev('copy_install'); }, { passive: true });
-  document.addEventListener('click', function (e) {
-    var a = e.target.closest && e.target.closest('a'); if (!a) return;
-    var h = a.getAttribute('href') || '';
-    if (/brew|releases|\.zip/i.test(h))             { ev('download'); conv('download'); }
-    else if (/stripe\.com|donate|sponsor/i.test(h)) { ev('donate');   conv('donate'); }
-    else if (/github\.com\/oabdrabo\/DisplayDeck/i.test(h)) ev('github');
-  }, true);
-})();
-</script>
-</body>
+    <script>
+      (function () {
+        var H = location.hostname;
+        if (!/\.pyxis3\.ai$/.test(H)) return;
+        var q = new URLSearchParams(location.search);
+        var cid = q.get("cid") || "";
+        var utm = new URLSearchParams();
+        q.forEach(function (v, k) {
+          if (/^utm_/.test(k)) utm.set(k, v);
+        });
+        var J = function (b) {
+          return new Blob([JSON.stringify(b)], { type: "application/json" });
+        };
+        function ev(name, value) {
+          try {
+            navigator.sendBeacon("/api/event", J({ host: H, name: name, value: value || 0, cid: cid }));
+          } catch (e) {}
+        }
+        function conv(label, value) {
+          new Image().src = "/api/conv?host=" + encodeURIComponent(H) + "&label=" + encodeURIComponent(label) + "&value=" + (value || 0) + "&cid=" + cid;
+        }
+        window.ddTrack = ev;
+        ev("visit");
+        if (utm.toString())
+          document.querySelectorAll('a[href*=".pyxis3.ai"]').forEach(function (a) {
+            try {
+              var u = new URL(a.href);
+              utm.forEach(function (v, k) {
+                if (!u.searchParams.has(k)) u.searchParams.set(k, v);
+              });
+              a.href = u.toString();
+            } catch (e) {}
+          });
+        var copybtn = document.getElementById("copybtn");
+        if (copybtn)
+          copybtn.addEventListener(
+            "click",
+            function () {
+              ev("copy_install");
+            },
+            { passive: true },
+          );
+        document.addEventListener(
+          "click",
+          function (e) {
+            var a = e.target.closest && e.target.closest("a");
+            if (!a) return;
+            var h = a.getAttribute("href") || "";
+            if (/brew|releases|\.zip/i.test(h)) {
+              ev("download");
+              conv("download");
+            } else if (/stripe\.com|donate|sponsor/i.test(h)) {
+              ev("donate");
+              conv("donate");
+            } else if (/github\.com\/oabdrabo\/DisplayDeck/i.test(h)) ev("github");
+          },
+          true,
+        );
+      })();
+    </script>
+  </body>
 </html>

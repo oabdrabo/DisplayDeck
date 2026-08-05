@@ -9,15 +9,19 @@ files=()
 while IFS= read -r f; do [ -f "$f" ] && files+=("$f"); done <<< "$staged"
 [ ${#files[@]} -eq 0 ] && exit 0
 
-if [ -x ./node_modules/.bin/prettier ]; then P=(./node_modules/.bin/prettier); else P=(npx --yes prettier@latest); fi
-"${P[@]}" --write --ignore-unknown "${files[@]}"
+if [ ! -x ./node_modules/.bin/prettier ]; then
+  echo "pre-commit: ./node_modules/.bin/prettier not found - run your install, skipping format." >&2
+  exit 0
+fi
+
+./node_modules/.bin/prettier --write --ignore-unknown -- "${files[@]}"
 
 if command -v yq >/dev/null 2>&1; then
   for f in "${files[@]}"; do
     case "$f" in
-      *.yaml | *.yml) yq e 'true' "$f" >/dev/null 2>&1 || { echo "pre-commit: $f is not valid YAML" >&2; exit 1; } ;;
+      *.yaml | *.yml) yq e 'true' -- "$f" >/dev/null 2>&1 || { echo "pre-commit: $f is not valid YAML" >&2; exit 1; } ;;
     esac
   done
 fi
 
-git add "${files[@]}"
+git add -- "${files[@]}"

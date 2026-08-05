@@ -7,7 +7,7 @@
 
 Disable & enable screens, Force HiDPI, brightness with EDR boost, color warmth (with auto-night), window tiling/snapping, transparency, blur, keep-on-top & picture-in-picture, keep-awake, remote access.
 
-[![Release](https://img.shields.io/badge/release-v2.8.2-2ea44f?style=flat-square)](https://github.com/oabdrabo/DisplayDeck/releases/latest)
+[![Release](https://img.shields.io/badge/release-v2.8.2-2ea44f?style=flat-square)](https://github.com/pyxis3-ai/displaydeck/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-3da639?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/macOS-14%2B-000?style=flat-square&logo=apple&logoColor=white)](#requirements)
 [![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-555?style=flat-square)](#requirements)
@@ -89,14 +89,14 @@ Submenus - Keep-Awake durations, the curated **Resolution** picker (= panel-nati
 **Homebrew** (cask):
 
 ```sh
-brew install --cask oabdrabo/tap/displaydeck
+brew install --cask pyxis3-ai/tap/displaydeck
 ```
 
 <details>
 <summary><b>From source</b></summary>
 
 ```sh
-git clone https://github.com/oabdrabo/DisplayDeck.git
+git clone https://github.com/pyxis3-ai/displaydeck.git
 cd DisplayDeck
 make install      # builds, signs, copies to /Applications, launches
 ```

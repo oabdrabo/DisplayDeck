@@ -213,7 +213,7 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 
 ### Changed
 
-- **Renamed from DisplayDisabler to DisplayDeck** - the app does far more than disable displays (resolutions, brightness, warmth, window control, keep-awake), so the name now reflects the scope. Bundle id, paths, Homebrew cask (`oabdrabo/tap/displaydeck`), and website all moved accordingly. The old repo URL redirects.
+- **Renamed from DisplayDisabler to DisplayDeck** - the app does far more than disable displays (resolutions, brightness, warmth, window control, keep-awake), so the name now reflects the scope. Bundle id, paths, Homebrew cask (`pyxis3-ai/tap/displaydeck`), and website all moved accordingly. The old repo URL redirects.
 
 ## [2.0.0] - 2026-06-15
 
@@ -237,30 +237,30 @@ All notable changes to DisplayDeck are documented here. Format follows [Keep a C
 
 - Initial release: disable/enable any display, Force HiDPI via a mirrored virtual display, brightness control, and keep-awake.
 
-[2.7.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.7.2
-[2.7.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.7.1
-[2.7.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.7.0
-[2.6.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.6.2
-[2.6.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.6.1
-[2.6.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.6.0
-[2.5.3]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.5.3
-[2.5.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.5.2
-[2.5.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.5.1
-[2.5.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.5.0
-[2.4.4]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.4.4
-[2.4.3]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.4.3
-[2.4.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.4.2
-[2.4.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.4.1
-[2.4.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.4.0
-[2.3.5]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.5
-[2.3.4]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.4
-[2.3.3]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.3
-[2.3.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.2
-[2.3.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.1
-[2.3.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.3.0
-[2.2.2]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.2.2
-[2.2.1]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.2.1
-[2.2.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.2.0
-[2.1.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.1.0
-[2.0.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v2.0.0
-[1.0.0]: https://github.com/oabdrabo/DisplayDeck/releases/tag/v1.0.0
+[2.7.2]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.7.2
+[2.7.1]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.7.1
+[2.7.0]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.7.0
+[2.6.2]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.6.2
+[2.6.1]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.6.1
+[2.6.0]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.6.0
+[2.5.3]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.5.3
+[2.5.2]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.5.2
+[2.5.1]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.5.1
+[2.5.0]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.5.0
+[2.4.4]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.4.4
+[2.4.3]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.4.3
+[2.4.2]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.4.2
+[2.4.1]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.4.1
+[2.4.0]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.4.0
+[2.3.5]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.3.5
+[2.3.4]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.3.4
+[2.3.3]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.3.3
+[2.3.2]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.3.2
+[2.3.1]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.3.1
+[2.3.0]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.3.0
+[2.2.2]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.2.2
+[2.2.1]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.2.1
+[2.2.0]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.2.0
+[2.1.0]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.1.0
+[2.0.0]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v2.0.0
+[1.0.0]: https://github.com/pyxis3-ai/displaydeck/releases/tag/v1.0.0

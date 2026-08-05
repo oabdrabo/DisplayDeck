@@ -35,7 +35,7 @@ See the [Project layout](README.md#%EF%B8%8F-project-layout) section of the READ
 
 ## Before you start
 
-For anything beyond a small fix, **open an issue first** - it's better to agree on direction before investing significant work. If you use AI tools in any way, your contribution must follow the **[AI Contribution Policy](AI_POLICY.md)** (disclose what you used, understand your own code, and only submit focused, genuinely-needed changes).
+For anything beyond a small fix, **open an issue first** - it's better to agree on direction before investing significant work. If you use AI tools in any way, your contribution must follow the **[AI Contribution Policy](https://github.com/pyxis3-ai/.github/blob/main/AI_POLICY.md)** (disclose what you used, understand your own code, and only submit focused, genuinely-needed changes).
 
 ## Pull requests
 
@@ -54,7 +54,7 @@ Because everything here rides on private APIs, behavior can change between macOS
 1. `make zip` → produces `DisplayDeck.app.zip`.
 2. `gh release create vX.Y.Z --latest --title … --notes …` and upload the zip:
    `gh release upload vX.Y.Z DisplayDeck.app.zip`.
-3. The Homebrew tap (`oabdrabo/homebrew-tap`) auto-bumps its cask - a scheduled
+3. The Homebrew tap (`pyxis3-ai/homebrew-tap`) auto-bumps its cask - a scheduled
    workflow there detects the new release, recomputes the sha256, and commits.
    No manual cask edit needed (run its `Update DisplayDeck cask` workflow
    manually if you don't want to wait for the schedule).

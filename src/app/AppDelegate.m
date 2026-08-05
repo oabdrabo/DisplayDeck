@@ -1227,9 +1227,9 @@ static NSAttributedString *ddColumns(NSArray<NSString *> *cols, NSArray<NSNumber
     [menu addItem:[self linkItem:@"Support DisplayDeck…" symbol:@"heart"
         url:@"https://donate.stripe.com/3cI6oI7Gh1PG0eV8MJ5kk00"]];
     [menu addItem:[self linkItem:@"Report a Bug…" symbol:@"ladybug"
-        url:@"https://github.com/oabdrabo/DisplayDeck/issues/new?labels=bug&title=Bug%3A+"]];
+        url:@"https://github.com/pyxis3-ai/displaydeck/issues/new?labels=bug&title=Bug%3A+"]];
     [menu addItem:[self linkItem:@"Request a Feature…" symbol:@"lightbulb"
-        url:@"https://github.com/oabdrabo/DisplayDeck/issues/new?labels=enhancement&title=Feature%3A+"]];
+        url:@"https://github.com/pyxis3-ai/displaydeck/issues/new?labels=enhancement&title=Feature%3A+"]];
 }
 
 - (NSMenuItem *)linkItem:(NSString *)title symbol:(NSString *)symbol url:(NSString *)url {

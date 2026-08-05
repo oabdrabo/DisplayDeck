@@ -17,3 +17,4 @@ AppIcon.iconset/
 *.xcodeproj/
 .claude/
 *.app.zip
+node_modules
